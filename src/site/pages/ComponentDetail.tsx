@@ -1,7 +1,7 @@
 import { Component, useEffect, useState, type ReactNode } from "react"
 import { Link, useParams } from "react-router-dom"
 
-import { dependenciesOf, getEntry, type CatalogEntry, type Showcase } from "@/catalog"
+import { getEntry, type CatalogEntry, type PublishedDependencies, type Showcase } from "@/catalog"
 import { CodeBlock } from "../CodeBlock"
 import { CopyButton } from "../CopyButton"
 import { safeHref } from "../safeHref"
@@ -38,7 +38,8 @@ function Detail({ entry }: { entry: CatalogEntry }) {
   const source = useLoaded(entry.loadSource, "")
   const data = useLoaded(entry.loadData, "")
   const showcase = useLoaded<Showcase | null>(entry.loadShowcase, null)
-  const ready = source.state !== "loading" && data.state !== "loading" && showcase.state !== "loading"
+  const dependencies = useLoaded<PublishedDependencies | null>(entry.loadDependencies, null)
+  const ready = [source, data, showcase, dependencies].every((loaded) => loaded.state !== "loading")
   const sourceHref = entry.source && safeHref(entry.source.url)
   const command = `pnpm dlx shadcn@latest add ${window.location.origin}/r/${entry.name}.json`
 
@@ -98,7 +99,7 @@ function Detail({ entry }: { entry: CatalogEntry }) {
 
       {source.state === "ready" && data.state !== "loading" && (
         <>
-          <Dependencies name={entry.name} sources={[source.value, data.state === "ready" ? data.value : ""]} />
+          {dependencies.state === "ready" && dependencies.value && <Dependencies {...dependencies.value} />}
           <Section id="source" title="Source">
             <div className="space-y-4">
               <CodeBlock code={source.value} filename={`components/ui/${entry.name}.tsx`} />
@@ -125,8 +126,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
   )
 }
 
-function Dependencies({ name, sources }: { name: string; sources: string[] }) {
-  const { packages, items } = dependenciesOf(name, ...sources)
+function Dependencies({ packages, items }: PublishedDependencies) {
   return (
     <Section id="dependencies" title="Dependencies">
       {packages.length + items.length === 0 ? (
@@ -150,14 +150,14 @@ function Dependencies({ name, sources }: { name: string; sources: string[] }) {
             <div>
               <dt className="font-medium">From this registry</dt>
               <dd className="mt-2 flex flex-wrap gap-1.5">
-                {items.map((dep) =>
-                  dep.isComponent ? (
-                    <Link key={dep.name} to={`/components/${dep.name}`} className="rounded-full border bg-card px-2.5 py-0.5 font-mono text-xs text-primary hover:border-primary/50">
-                      {dep.name}
+                {items.map((name) =>
+                  getEntry(name) ? (
+                    <Link key={name} to={`/components/${name}`} className="rounded-full border bg-card px-2.5 py-0.5 font-mono text-xs text-primary hover:border-primary/50">
+                      {name}
                     </Link>
                   ) : (
-                    <span key={dep.name} className="rounded-full border bg-card px-2.5 py-0.5 font-mono text-xs">
-                      {dep.name}
+                    <span key={name} className="rounded-full border bg-card px-2.5 py-0.5 font-mono text-xs">
+                      {name}
                     </span>
                   ),
                 )}

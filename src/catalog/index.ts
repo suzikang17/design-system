@@ -2,19 +2,22 @@
  * Discovery: every `src/components/ui/<name>.tsx` is a catalog entry, and an
  * optional `<name>.showcase.tsx` beside it adds a title, a group and live
  * examples. Dropping a file in is the whole registration.
+ *
+ * Every page loads only each showcase's title, group and description, through
+ * the `?meta` import that vite.config.ts serves. Source text, examples and
+ * dependencies load on the component's own page.
  */
-import { dependencies as packageVersions } from "../../package.json"
-import { classifyImports, importSpecifiers, parseShowcaseMeta, titleFromName } from "./parse"
+import { titleFromName, type ShowcaseMeta } from "./parse"
 import { GROUPS, type Group, type Showcase } from "./types"
 
 export { GROUPS, type Group, type Showcase }
 
 const sources = import.meta.glob<string>(
-  ["../components/ui/*.tsx", "!../components/ui/*.showcase.tsx"],
+  ["../components/ui/*.tsx", "!../components/ui/*.showcase.tsx", "!../components/ui/*.test.tsx", "!../components/ui/*.spec.tsx"],
   { query: "?raw", import: "default" },
 )
-const showcaseText = import.meta.glob<string>("../components/ui/*.showcase.tsx", {
-  query: "?raw",
+const showcaseMeta = import.meta.glob<ShowcaseMeta>("../components/ui/*.showcase.tsx", {
+  query: "?meta",
   import: "default",
   eager: true,
 })
@@ -25,6 +28,13 @@ const dataFiles = import.meta.glob<string>("../components/ui/*.data.ts", { query
 
 /** Shown in the nav for components that have no showcase file yet. */
 export const UNGROUPED = "Ungrouped"
+
+export interface PublishedDependencies {
+  /** npm packages, with the version range only where the registry pins one. */
+  packages: { name: string; version?: string }[]
+  /** Other items of this registry. */
+  items: string[]
+}
 
 export interface CatalogEntry {
   name: string
@@ -40,6 +50,22 @@ export interface CatalogEntry {
   loadShowcase?: () => Promise<Showcase>
   /** The text of `<name>.data.ts`, which ships in the same registry item. */
   loadData?: () => Promise<string>
+  /** What installing the component pulls in, read from its published registry item. */
+  loadDependencies: () => Promise<PublishedDependencies>
+}
+
+/** The dependencies of `/r/<name>.json`, as the shadcn CLI will install them. */
+async function publishedDependencies(name: string): Promise<PublishedDependencies> {
+  const response = await fetch(`/r/${name}.json`)
+  if (!response.ok) throw new Error(`/r/${name}.json answered ${response.status}`)
+  const item = (await response.json()) as { dependencies?: string[]; registryDependencies?: string[] }
+  return {
+    packages: (item.dependencies ?? []).map((dep) => {
+      const at = dep.indexOf("@", 1)
+      return at > 0 ? { name: dep.slice(0, at), version: dep.slice(at + 1) } : { name: dep }
+    }),
+    items: (item.registryDependencies ?? []).map((url) => url.replace(/^.*\/r\//, "").replace(/\.json$/, "")),
+  }
 }
 
 const nameOf = (path: string) => path.split("/").pop()!.replace(/(\.showcase)?\.tsx$/, "")
@@ -48,19 +74,19 @@ const showcasePath = (name: string) => `../components/ui/${name}.showcase.tsx`
 export const entries: CatalogEntry[] = Object.keys(sources)
   .map((path): CatalogEntry => {
     const name = nameOf(path)
-    const text = showcaseText[showcasePath(name)]
-    const meta = text ? parseShowcaseMeta(text) : {}
+    const meta = showcaseMeta[showcasePath(name)]
     return {
       name,
-      title: meta.title ?? titleFromName(name),
-      group: (meta.group as Group | undefined) ?? UNGROUPED,
-      description: meta.description ?? "",
-      source: meta.source,
-      license: meta.license,
-      hasShowcase: Boolean(text),
+      title: meta?.title ?? titleFromName(name),
+      group: (meta?.group as Group | undefined) ?? UNGROUPED,
+      description: meta?.description ?? "",
+      source: meta?.source,
+      license: meta?.license,
+      hasShowcase: Boolean(meta),
       loadSource: sources[path],
       loadShowcase: showcaseModules[showcasePath(name)],
       loadData: dataFiles[`../components/ui/${name}.data.ts`],
+      loadDependencies: () => publishedDependencies(name),
     }
   })
   .sort((a, b) => a.title.localeCompare(b.title))
@@ -74,22 +100,4 @@ export function entriesByGroup(list: CatalogEntry[] = entries) {
   return [...GROUPS, UNGROUPED]
     .map((group) => ({ group, entries: list.filter((entry) => entry.group === group) }))
     .filter((section) => section.entries.length > 0)
-}
-
-export interface Dependency {
-  name: string
-  /** The version range from package.json, for npm packages. */
-  version?: string
-  /** True when the dependency is another component in this catalog. */
-  isComponent: boolean
-}
-
-/** What installing a component pulls in, read from the imports of its files. */
-export function dependenciesOf(name: string, ...sources: string[]) {
-  const { packages, items } = classifyImports(sources.flatMap(importSpecifiers), name)
-  const versions: Record<string, string> = packageVersions
-  return {
-    packages: packages.map((pkg): Dependency => ({ name: pkg, version: versions[pkg], isComponent: false })),
-    items: items.map((item): Dependency => ({ name: item, isComponent: Boolean(getEntry(item)) })),
-  }
 }
