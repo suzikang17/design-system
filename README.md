@@ -9,9 +9,10 @@ React components, themes and tokens. The repo publishes them as a shadcn registr
 
 ```sh
 pnpm install
-pnpm dev          # the site, with live examples
-pnpm build        # registry.json, then public/r/*.json (shadcn build), then dist/ (vite build)
+pnpm dev          # build the registry, then serve the site with live examples
+pnpm build        # build the registry, then dist/ (vite build)
 pnpm preview      # serve dist/
+pnpm registry     # registry.json (gen:registry), then public/r/*.json (shadcn build)
 pnpm test         # vitest
 pnpm typecheck
 pnpm lint
@@ -85,7 +86,7 @@ The components expect Tailwind CSS 3.4 and HSL channel tokens such as `--primary
 ## Deploy on Vercel
 
 1. Import the repository in Vercel. `vercel.json` sets the build command, the `dist` output and the rewrite that sends page routes to `index.html`.
-2. Set `SITE_URL` to the site's public address, for example `https://design.example.com`. The registry uses it for `homepage` and for the URLs of item dependencies. Without it, the build uses the Vercel production domain, then `https://design-system.vercel.app`.
+2. Set `SITE_URL` to the site's public address, for example `https://design.example.com`. The registry uses it for `homepage` and for the URLs of item dependencies. Without it, the build uses the Vercel production domain, then the placeholder `https://design-system.vercel.app`, and prints a warning.
 3. Optional: set `VITE_SHOW_INSPIRATION=true` to show the Inspiration link in the header. The page at `/inspiration` renders `inspiration.md`.
 
 ## Site settings

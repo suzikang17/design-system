@@ -22,9 +22,14 @@ const HOOKS = "src/hooks"
 const THEMES = "src/styles/themes"
 
 const vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
-const homepage = (
-  process.env.SITE_URL || (vercelUrl ? `https://${vercelUrl}` : "https://design-system.vercel.app")
-).replace(/\/+$/, "")
+const PLACEHOLDER = "https://design-system.vercel.app"
+const homepage = (process.env.SITE_URL || (vercelUrl ? `https://${vercelUrl}` : PLACEHOLDER)).replace(/\/+$/, "")
+if (homepage === PLACEHOLDER) {
+  console.warn(
+    `registry.json: SITE_URL is not set, so item dependencies point at the placeholder ${PLACEHOLDER}. ` +
+      "Set SITE_URL to this site's address before you publish the registry.",
+  )
+}
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8")) as { dependencies: Record<string, string> }
 const read = (path: string) => readFileSync(path, "utf8")
