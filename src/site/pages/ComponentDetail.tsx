@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom"
 import { dependenciesOf, getEntry, type CatalogEntry, type Showcase } from "@/catalog"
 import { CodeBlock } from "../CodeBlock"
 import { CopyButton } from "../CopyButton"
+import { safeHref } from "../safeHref"
 import { useTitle } from "../useTitle"
 import NotFound from "./NotFound"
 
@@ -35,8 +36,10 @@ function useLoaded<T>(load: (() => Promise<T>) | undefined, fallback: T): Loaded
 function Detail({ entry }: { entry: CatalogEntry }) {
   useTitle(entry.title)
   const source = useLoaded(entry.loadSource, "")
+  const data = useLoaded(entry.loadData, "")
   const showcase = useLoaded<Showcase | null>(entry.loadShowcase, null)
-  const ready = source.state !== "loading" && showcase.state !== "loading"
+  const ready = source.state !== "loading" && data.state !== "loading" && showcase.state !== "loading"
+  const sourceHref = entry.source && safeHref(entry.source.url)
   const command = `pnpm dlx shadcn@latest add ${window.location.origin}/r/${entry.name}.json`
 
   return (
@@ -49,9 +52,13 @@ function Detail({ entry }: { entry: CatalogEntry }) {
       {entry.source && (
         <p className="mt-3 text-sm text-muted-foreground">
           Adapted from{" "}
-          <a href={entry.source.url} className="font-medium text-primary underline-offset-4 hover:underline">
-            {entry.source.name}
-          </a>
+          {sourceHref ? (
+            <a href={sourceHref} className="font-medium text-primary underline-offset-4 hover:underline">
+              {entry.source.name}
+            </a>
+          ) : (
+            <span className="font-medium text-foreground">{entry.source.name}</span>
+          )}
           {entry.license ? `, used under the ${entry.license} license.` : "."}
         </p>
       )}
@@ -89,11 +96,16 @@ function Detail({ entry }: { entry: CatalogEntry }) {
         )}
       </Section>
 
-      {source.state === "ready" && (
+      {source.state === "ready" && data.state !== "loading" && (
         <>
-          <Dependencies name={entry.name} source={source.value} />
+          <Dependencies name={entry.name} sources={[source.value, data.state === "ready" ? data.value : ""]} />
           <Section id="source" title="Source">
-            <CodeBlock code={source.value} filename={`components/ui/${entry.name}.tsx`} />
+            <div className="space-y-4">
+              <CodeBlock code={source.value} filename={`components/ui/${entry.name}.tsx`} />
+              {data.state === "ready" && data.value && (
+                <CodeBlock code={data.value} filename={`components/ui/${entry.name}.data.ts`} />
+              )}
+            </div>
           </Section>
         </>
       )}
@@ -113,8 +125,8 @@ function Section({ id, title, children }: { id: string; title: string; children:
   )
 }
 
-function Dependencies({ name, source }: { name: string; source: string }) {
-  const { packages, items } = dependenciesOf(name, source)
+function Dependencies({ name, sources }: { name: string; sources: string[] }) {
+  const { packages, items } = dependenciesOf(name, ...sources)
   return (
     <Section id="dependencies" title="Dependencies">
       {packages.length + items.length === 0 ? (

@@ -21,6 +21,7 @@ const showcaseText = import.meta.glob<string>("../components/ui/*.showcase.tsx",
 const showcaseModules = import.meta.glob<Showcase>("../components/ui/*.showcase.tsx", {
   import: "default",
 })
+const dataFiles = import.meta.glob<string>("../components/ui/*.data.ts", { query: "?raw", import: "default" })
 
 /** Shown in the nav for components that have no showcase file yet. */
 export const UNGROUPED = "Ungrouped"
@@ -37,6 +38,8 @@ export interface CatalogEntry {
   loadSource: () => Promise<string>
   /** The showcase module, when there is one. */
   loadShowcase?: () => Promise<Showcase>
+  /** The text of `<name>.data.ts`, which ships in the same registry item. */
+  loadData?: () => Promise<string>
 }
 
 const nameOf = (path: string) => path.split("/").pop()!.replace(/(\.showcase)?\.tsx$/, "")
@@ -57,6 +60,7 @@ export const entries: CatalogEntry[] = Object.keys(sources)
       hasShowcase: Boolean(text),
       loadSource: sources[path],
       loadShowcase: showcaseModules[showcasePath(name)],
+      loadData: dataFiles[`../components/ui/${name}.data.ts`],
     }
   })
   .sort((a, b) => a.title.localeCompare(b.title))
@@ -80,9 +84,9 @@ export interface Dependency {
   isComponent: boolean
 }
 
-/** What installing a component pulls in, read from its imports. */
-export function dependenciesOf(name: string, source: string) {
-  const { packages, items } = classifyImports(importSpecifiers(source), name)
+/** What installing a component pulls in, read from the imports of its files. */
+export function dependenciesOf(name: string, ...sources: string[]) {
+  const { packages, items } = classifyImports(sources.flatMap(importSpecifiers), name)
   const versions: Record<string, string> = packageVersions
   return {
     packages: packages.map((pkg): Dependency => ({ name: pkg, version: versions[pkg], isComponent: false })),

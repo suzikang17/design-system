@@ -2,12 +2,10 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import markdown from "../../../inspiration.md?raw"
 import { parseInline, parseMarkdownTable } from "../markdownTable"
+import { safeHref } from "../safeHref"
 import { useTitle } from "../useTitle"
 
 const { headers, rows } = parseMarkdownTable(markdown)
-
-/** Only links to the web are rendered as links. */
-const safeHref = (href: string) => (/^https?:\/\//.test(href) ? href : undefined)
 
 export default function Inspiration() {
   useTitle("Inspiration")
