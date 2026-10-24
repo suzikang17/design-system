@@ -36,7 +36,7 @@ const columns: ColumnDef<Person>[] = [
   { accessorKey: "status", header: "Status" },
 ]
 
-const names = () => screen.queryAllByRole("row").slice(1).map((row) => row.cells[1]?.textContent)
+const names = () => screen.queryAllByRole<HTMLTableRowElement>("row").slice(1).map((row) => row.cells[1]?.textContent)
 
 describe("DataTable", () => {
   it("filters a column by every value picked in a faceted filter, matching whole values", async () => {
