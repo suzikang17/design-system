@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useId, useState } from "react"
 
 import type { Showcase } from "@/catalog/types"
 import { BottomSheet } from "@/components/ui/bottom-sheet"
@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button"
 
 function Dismissible() {
   const [open, setOpen] = useState(false)
+  const titleId = useId()
   return (
     <>
       <Button onClick={() => setOpen(true)}>Share project</Button>
-      <BottomSheet open={open} onClose={() => setOpen(false)}>
+      <BottomSheet open={open} onClose={() => setOpen(false)} aria-labelledby={titleId}>
         <div className="space-y-3 px-5 pb-6 pt-3">
-          <h3 className="text-base font-semibold">Share project</h3>
-          <p className="text-sm text-muted-foreground">Anyone with the link can view. Swipe down, tap outside or press Escape to close.</p>
+          <h3 id={titleId} className="text-base font-semibold">Share project</h3>
+          <p className="text-sm text-muted-foreground">Anyone with the link can view. Swipe the handle down, tap outside or press Escape to close.</p>
           <Button variant="outline" className="w-full" onClick={() => setOpen(false)}>
             Copy link
           </Button>
@@ -24,14 +25,15 @@ function Dismissible() {
 
 function Required() {
   const [open, setOpen] = useState(false)
+  const titleId = useId()
   return (
     <>
       <Button variant="outline" onClick={() => setOpen(true)}>
         Delete project
       </Button>
-      <BottomSheet open={open} onClose={() => setOpen(false)} dismissible={false}>
+      <BottomSheet open={open} onClose={() => setOpen(false)} dismissible={false} aria-labelledby={titleId}>
         <div className="space-y-3 px-5 pb-6 pt-3">
-          <h3 className="text-base font-semibold">Delete this project?</h3>
+          <h3 id={titleId} className="text-base font-semibold">Delete this project?</h3>
           <p className="text-sm text-muted-foreground">This cannot be undone. Choose an answer to close the sheet.</p>
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" onClick={() => setOpen(false)}>
