@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useId } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { format, isValid, isBefore, isAfter, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, type Day } from "date-fns";
+import { format, isBefore, isAfter, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, type Day } from "date-fns";
 import { CalendarIcon, ChevronLeft, ChevronRight, Check, AlertCircle } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -16,11 +16,12 @@ function toISO(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/** A real calendar date, or undefined: 2025-02-30 does not roll over to March. */
 function fromISO(s: string): Date | undefined {
   if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return undefined;
   const [y, m, d] = s.split("-").map(Number);
   const date = new Date(y, m - 1, d);
-  return isValid(date) ? date : undefined;
+  return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d ? date : undefined;
 }
 
 function displayDate(s: string): string {

@@ -48,6 +48,14 @@ describe("DateRangeSheet", () => {
     expect(field).toHaveFocus()
   })
 
+  it("treats a date that does not exist as no date, instead of rolling it over", () => {
+    render(
+      <DateRangeSheet startLabel="From" endLabel="To" startValue="2025-02-30" endValue="" onStartChange={() => undefined} onEndChange={() => undefined} />,
+    )
+    expect(screen.getByLabelText("From")).toHaveTextContent("MM/DD/YYYY")
+    expect(screen.getByLabelText("From")).not.toHaveTextContent("03/02/2025")
+  })
+
   it("ties each label to its field", () => {
     render(
       <DateRangeSheet startLabel="Check in" endLabel="Check out" startValue="" endValue="" onStartChange={() => undefined} onEndChange={() => undefined} />,
