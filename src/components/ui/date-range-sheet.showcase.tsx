@@ -3,8 +3,7 @@ import { useState } from "react"
 import type { Showcase } from "@/catalog/types"
 import { DateRangeSheet, DateSheet } from "@/components/ui/date-range-sheet"
 
-/** Room for the calendar, which opens below the fields on desktop. */
-const FRAME = "w-full max-w-xl self-start md:min-h-[30rem]"
+const FRAME = "w-full max-w-xl"
 
 function Range() {
   const [range, setRange] = useState({ start: "", end: "" })
@@ -45,7 +44,7 @@ function OpenEnded() {
 function Single() {
   const [value, setValue] = useState("")
   return (
-    <div className={`${FRAME} max-w-xs`}>
+    <div className="w-full max-w-xs">
       <DateSheet label="Delivery date" value={value} onChange={setValue} />
     </div>
   )

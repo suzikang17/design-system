@@ -24,8 +24,8 @@ function phaseOf(step: number) {
   return PHASES.findIndex((phase) => (end += phase.stepCount) > step)
 }
 
-/** The bar is fixed to the top on phones; here it stays inside its frame. */
-const FRAME = "w-full max-w-2xl self-start"
+/** On a phone the bar is fixed to the top of the screen; here it sits in its frame. */
+const FRAME = "w-full max-w-2xl [&>div:first-child]:!static"
 
 function Phases() {
   const [step, setStep] = useState(3)

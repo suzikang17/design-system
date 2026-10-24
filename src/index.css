@@ -42,22 +42,21 @@
   color: var(--shiki-dark);
 }
 
-/* The frame each live example renders in. `transform` makes it the containing
-   block for `position: fixed` children, so bars and sheets stay inside it. */
+/* The frame each live example renders in. It clips sideways only, so a menu
+   that opens downward can still spill over what comes next. */
 .stage {
   position: relative;
   display: flex;
   min-height: 10rem;
   align-items: center;
   justify-content: center;
-  overflow-x: auto;
+  overflow-x: clip;
   border: 1px solid hsl(var(--border));
   border-radius: calc(var(--radius) + 4px);
   background-color: hsl(var(--background));
   background-image: radial-gradient(hsl(var(--border)) 1px, transparent 1px);
   background-size: 16px 16px;
   padding: 2.5rem 1rem;
-  transform: translateZ(0);
 }
 @media (min-width: 768px) {
   .stage {

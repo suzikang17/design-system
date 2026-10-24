@@ -4,13 +4,10 @@ import type { Showcase } from "@/catalog/types"
 import { BottomSheet } from "@/components/ui/bottom-sheet"
 import { Button } from "@/components/ui/button"
 
-/** The sheet covers its frame here; in an app it covers the screen. */
-const FRAME = "flex min-h-[22rem] w-full items-center justify-center"
-
 function Dismissible() {
   const [open, setOpen] = useState(false)
   return (
-    <div className={FRAME}>
+    <>
       <Button onClick={() => setOpen(true)}>Share project</Button>
       <BottomSheet open={open} onClose={() => setOpen(false)}>
         <div className="space-y-3 px-5 pb-6 pt-3">
@@ -21,14 +18,14 @@ function Dismissible() {
           </Button>
         </div>
       </BottomSheet>
-    </div>
+    </>
   )
 }
 
 function Required() {
   const [open, setOpen] = useState(false)
   return (
-    <div className={FRAME}>
+    <>
       <Button variant="outline" onClick={() => setOpen(true)}>
         Delete project
       </Button>
@@ -46,7 +43,7 @@ function Required() {
           </div>
         </div>
       </BottomSheet>
-    </div>
+    </>
   )
 }
 
