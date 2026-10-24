@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState } from "react"
+import { Component, Suspense, useEffect, useRef, useState, type ReactNode } from "react"
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom"
 import { PanelLeft } from "lucide-react"
 
@@ -51,9 +51,11 @@ export function Layout() {
         </div>
       </header>
       <main id="main" tabIndex={-1} className="flex-1 outline-none">
-        <Suspense fallback={<div className="min-h-[60vh]" />}>
-          <Outlet />
-        </Suspense>
+        <RouteBoundary path={pathname}>
+          <Suspense fallback={<div className="min-h-[60vh]" />}>
+            <Outlet />
+          </Suspense>
+        </RouteBoundary>
       </main>
       <footer className="border-t">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-8 text-sm text-muted-foreground md:px-6">
@@ -73,6 +75,58 @@ export function Layout() {
       </footer>
     </div>
   )
+}
+
+/** The message a deploy gives a tab that still asks for the old page files. */
+const CHUNK_ERROR = /dynamically imported module|Importing a module script failed|error loading dynamically imported module/i
+const RELOADED_AT = "ds-chunk-reload"
+
+/** Reloads the page unless this tab already did so in the last 10 seconds. */
+function reloadOnce(): boolean {
+  try {
+    const last = Number(sessionStorage.getItem(RELOADED_AT))
+    if (last && Date.now() - last < 10_000) return false
+    sessionStorage.setItem(RELOADED_AT, String(Date.now()))
+  } catch {
+    return false // No storage, no guard against a reload loop: show the message instead.
+  }
+  window.location.reload()
+  return true
+}
+
+/**
+ * Catches a page that fails to load or render, below the header. A page
+ * file missing after a deploy reloads the tab once; anything else, or a
+ * second failure, shows a short message with a Reload button.
+ */
+class RouteBoundary extends Component<{ path: string; children: ReactNode }, { error?: Error }> {
+  state: { error?: Error } = {}
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+  componentDidCatch(error: Error) {
+    if (CHUNK_ERROR.test(error.message)) reloadOnce()
+  }
+  componentDidUpdate(previous: { path: string }) {
+    if (previous.path !== this.props.path && this.state.error) this.setState({ error: undefined })
+  }
+  render() {
+    if (!this.state.error) return this.props.children
+    return (
+      <div data-ready="" role="alert" className="mx-auto max-w-xl px-4 py-24 text-center">
+        <h1 className="text-2xl font-semibold tracking-tight">This page did not load</h1>
+        <p className="mt-3 text-muted-foreground">
+          {CHUNK_ERROR.test(this.state.error.message)
+            ? "The site has changed since this tab opened."
+            : "Something went wrong while showing it."}{" "}
+          Reload to try again.
+        </p>
+        <PillButton className="mt-6" onClick={() => window.location.reload()}>
+          Reload
+        </PillButton>
+      </div>
+    )
+  }
 }
 
 /** The site mark: a pill with its knob, drawn from the pill scale. */
