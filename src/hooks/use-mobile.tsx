@@ -1,32 +1,15 @@
-
 import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768
+const QUERY = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`
 
+function subscribe(onChange: () => void) {
+  const query = window.matchMedia(QUERY)
+  query.addEventListener("change", onChange)
+  return () => query.removeEventListener("change", onChange)
+}
+
+/** True below the `md` breakpoint (768px), from the first render. False on the server. */
 export function useIsMobile() {
-  // Use null as initial state to indicate "not determined yet"
-  const [isMobile, setIsMobile] = React.useState<boolean | null>(null)
-  
-  React.useEffect(() => {
-    // Only run this code on the client
-    if (typeof window === 'undefined') return;
-    
-    // Set initial value based on current window width
-    const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    }
-    
-    // Initial check
-    checkIfMobile()
-    
-    // Add event listener
-    const handleResize = () => checkIfMobile()
-    window.addEventListener('resize', handleResize)
-    
-    // Cleanup event listener
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  // Return current state (null during SSR, boolean on client)
-  return isMobile
+  return React.useSyncExternalStore(subscribe, () => window.matchMedia(QUERY).matches, () => false)
 }
