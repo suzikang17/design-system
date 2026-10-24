@@ -184,7 +184,7 @@ function Toolbar({ table, onAdd }: { table: Table<Task>; onAdd: () => void }) {
             </Command>
           </PillPopoverContent>
         </Popover>
-        <span className="ml-auto flex items-center gap-3">
+        <span className="ml-auto flex items-center gap-0.5">
           <PillButton onClick={onAdd}>
             <Plus aria-hidden="true" />
             New task
@@ -207,13 +207,27 @@ function Toolbar({ table, onAdd }: { table: Table<Task>; onAdd: () => void }) {
   )
 }
 
-/** A dimension line beside the toolbar: the height every control in it shares. */
+/**
+ * A dimension callout on "New task": dashed extension lines from the
+ * button's top and bottom edges, a dimension line with a tick at each end,
+ * and the height every control in the toolbar shares.
+ */
 function DimensionMark() {
   return (
-    <span aria-hidden="true" className="hidden items-center gap-1.5 text-[11px] font-medium tabular-nums text-muted-foreground sm:flex">
-      <span className="h-10 w-1.5 border-y border-r border-primary/70 md:h-8" />
-      <span className="md:hidden">40</span>
-      <span className="hidden md:inline">32</span>
+    <span aria-hidden="true" className="hidden h-10 items-center sm:flex md:h-8">
+      <span className="flex h-full w-2 flex-col justify-between">
+        <span className="border-t border-dashed border-primary/60" />
+        <span className="border-t border-dashed border-primary/60" />
+      </span>
+      <span className="relative h-full w-2.5">
+        <span className="absolute inset-y-0 left-1/2 border-l border-primary" />
+        <span className="absolute inset-x-0 top-0 border-t border-primary" />
+        <span className="absolute inset-x-0 bottom-0 border-t border-primary" />
+      </span>
+      <span className="ml-1.5 font-mono text-[11px] font-medium tabular-nums text-primary">
+        <span className="md:hidden">40px</span>
+        <span className="hidden md:inline">32px</span>
+      </span>
     </span>
   )
 }
