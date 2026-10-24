@@ -1,10 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+type Answer = "yes" | "no" | boolean | undefined | null;
+
 interface YesNoChipsProps {
-  /** "yes" | "no" for string fields, true | false for boolean fields */
-  value: "yes" | "no" | boolean | undefined | null;
+  /**
+   * "yes" | "no" for string fields, true | false for boolean fields. Passing
+   * `value` (even as undefined) makes the chips show exactly what it says;
+   * leave it out and they keep their own answer, starting from `defaultValue`.
+   */
+  value?: Answer;
+  defaultValue?: Answer;
   onChange: (value: "yes" | "no" | boolean | undefined) => void;
   /** Whether the value type should be boolean (true/false) or string ("yes"/"no") */
   booleanMode?: boolean;
@@ -15,29 +22,25 @@ interface YesNoChipsProps {
   noLabel?: string;
 }
 
-export function YesNoChips({
-  value,
-  onChange,
-  booleanMode = false,
-  allowDeselect = true,
-  error,
-  yesLabel = "Yes",
-  noLabel = "No",
-}: YesNoChipsProps) {
-  // Local state drives the visual so deselect is immediate regardless of
-  // when (or whether) a form library re-renders with the new value.
-  const [local, setLocal] = useState(value);
+export function YesNoChips(props: YesNoChipsProps) {
+  const {
+    defaultValue,
+    onChange,
+    booleanMode = false,
+    allowDeselect = true,
+    error,
+    yesLabel = "Yes",
+    noLabel = "No",
+  } = props;
+  const controlled = "value" in props;
+  const [own, setOwn] = useState<Answer>(defaultValue);
+  const current = controlled ? props.value : own;
 
-  // Sync when the external value changes (e.g. form reset, loading saved data).
-  useEffect(() => {
-    setLocal(value);
-  }, [value]);
-
-  const isYes = booleanMode ? local === true : local === "yes";
-  const isNo = booleanMode ? local === false : local === "no";
+  const isYes = booleanMode ? current === true : current === "yes";
+  const isNo = booleanMode ? current === false : current === "no";
 
   const handle = (next: "yes" | "no" | boolean | undefined) => {
-    setLocal(next);
+    if (!controlled) setOwn(next);
     onChange(next);
   };
 
