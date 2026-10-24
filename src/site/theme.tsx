@@ -33,6 +33,14 @@ function initialTheme(): string {
   return isTheme(saved) ? saved : defaultThemeId
 }
 
+/** Takes `?theme=` out of the address once it is applied, so a reload keeps the choice made after it. */
+function dropThemeParam() {
+  const url = new URL(window.location.href)
+  if (!url.searchParams.has("theme")) return
+  url.searchParams.delete("theme")
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`)
+}
+
 interface ThemeState {
   theme: Theme
   setTheme: (id: string) => void
@@ -43,6 +51,8 @@ const ThemeContext = React.createContext<ThemeState | null>(null)
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [id, setId] = React.useState(initialTheme)
   const theme = themes.find((t) => t.id === id) ?? themes[0]
+
+  React.useEffect(dropThemeParam, [])
 
   React.useLayoutEffect(() => {
     const root = document.documentElement
