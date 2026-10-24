@@ -24,14 +24,17 @@ function phaseOf(step: number) {
   return PHASES.findIndex((phase) => (end += phase.stepCount) > step)
 }
 
-/** On a phone the bar is fixed to the top of the screen; here it sits in its frame. */
-const FRAME = "w-full max-w-2xl [&>div:first-child]:!static"
+const FRAME = "w-full max-w-2xl"
+
+/** On a phone the bar is fixed to the top of the screen; `static` keeps it in its frame here. */
+const IN_FRAME = "static"
 
 function Phases() {
   const [step, setStep] = useState(3)
   return (
     <div className={FRAME}>
       <WizardTopBar
+        className={IN_FRAME}
         currentStep={step}
         totalSteps={STEPS.length}
         steps={STEPS}
@@ -50,6 +53,7 @@ function StepPicker() {
   return (
     <div className={FRAME}>
       <WizardTopBar
+        className={IN_FRAME}
         currentStep={step}
         totalSteps={STEPS.length}
         steps={STEPS}
@@ -66,6 +70,7 @@ function Skippable() {
   return (
     <div className={FRAME}>
       <WizardTopBar
+        className={IN_FRAME}
         currentStep={step}
         totalSteps={STEPS.length}
         steps={STEPS}

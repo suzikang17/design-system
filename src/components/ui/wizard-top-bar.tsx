@@ -63,6 +63,8 @@ interface WizardTopBarProps {
   isReviewStep?: boolean;
   hasLayoutNav?: boolean;
   labels?: Partial<WizardTopBarLabels>;
+  /** Merged onto the bar, last. `static` keeps it in the page flow on phones too. */
+  className?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -86,6 +88,7 @@ export function WizardTopBar({
   isReviewStep = false,
   hasLayoutNav = false,
   labels,
+  className,
 }: WizardTopBarProps) {
   const text = { ...DEFAULT_LABELS, ...labels };
   const [stepPickerOpen, setStepPickerOpen] = React.useState(false);
@@ -135,7 +138,7 @@ export function WizardTopBar({
   return (
     <>
       {/* ── TOP BAR ───────────────────────────────────────────────────────── */}
-      <div className={cn("fixed inset-x-0 z-50 bg-background shadow-sm md:relative md:inset-x-auto md:shadow-none md:border-b md:border-border md:top-0", hasLayoutNav ? "top-16" : "top-0")}>
+      <div className={cn("fixed inset-x-0 z-50 bg-background shadow-sm md:relative md:inset-x-auto md:shadow-none md:border-b md:border-border md:top-0", hasLayoutNav ? "top-16" : "top-0", className)}>
         <div className="px-4 pt-3 pb-3">
 
           {/* Row 1: back | pills / spacer | skip or 🌐 */}
