@@ -6,4 +6,4 @@ Components from other people worth learning from or adopting. Status is `wanted`
 | --- | --- | --- |
 | [Example component one](https://example.com/one) | Placeholder: say what makes it worth a look. | wanted |
 | [Example component two](https://example.com/two) | Placeholder: say what makes it worth a look. | wanted |
-| [Example component three](https://example.com/three) | Placeholder: say what makes it worth a look. | adopted |
+| [Magic UI Marquee](https://magicui.design/docs/components/marquee) | Endless scroll from CSS alone: repeated copies and one keyframe, with reverse, vertical and pause on hover. | adopted |
