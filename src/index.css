@@ -42,15 +42,16 @@
   color: var(--shiki-dark);
 }
 
-/* The frame each live example renders in. It clips sideways only, so a menu
-   that opens downward can still spill over what comes next. */
+/* The frame each live example renders in. On phones a wide example scrolls
+   sideways. From md up the frame clips sideways only, so a menu that opens
+   downward (the date range popover) can spill over what comes next. */
 .stage {
   position: relative;
   display: flex;
   min-height: 10rem;
   align-items: center;
   justify-content: center;
-  overflow-x: clip;
+  overflow-x: auto;
   border: 1px solid hsl(var(--border));
   border-radius: calc(var(--radius) + 4px);
   background-color: hsl(var(--background));
@@ -60,6 +61,7 @@
 }
 @media (min-width: 768px) {
   .stage {
+    overflow-x: clip;
     padding: 3rem 2rem;
   }
 }
