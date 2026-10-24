@@ -1,3 +1,6 @@
+import * as React from "react"
+
+import { useIsMobile } from "@/hooks/use-mobile"
 import { inputResponsiveCn } from "@/components/ui/form-field"
 import {
   Select,
@@ -14,54 +17,99 @@ export interface StatePickerOption {
   label: string
 }
 
-interface StatePickerProps {
+export interface StatePickerProps {
   value: string
   onChange: (value: string) => void
+  onBlur?: () => void
   error?: boolean
   /** Shown while nothing is picked. */
   placeholder?: string
-  /** The control's accessible name. */
+  /** The control's accessible name. Defaults to "State" unless an `id` ties it to a label. */
   label?: string
   /** Defaults to the US states and DC. */
   options?: StatePickerOption[]
+  id?: string
+  name?: string
+  disabled?: boolean
+  "aria-describedby"?: string
+  "aria-invalid"?: React.AriaAttributes["aria-invalid"]
 }
 
-/** Responsive state picker: native <select> on mobile, ShadCN Select on desktop. */
-export function StatePicker({
-  value,
-  onChange,
-  error,
-  placeholder = "State",
-  label = "State",
-  options = US_STATE_OPTIONS,
-}: StatePickerProps) {
-  return (
-    <>
-      {/* Native select — mobile only */}
-      <select
-        aria-label={label}
-        aria-invalid={error || undefined}
-        value={value || ""}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn(
-          "md:hidden w-full appearance-none bg-background text-base text-foreground rounded-xl border px-4 h-14",
-          "focus:outline-none focus:border-primary",
-          error ? "border-destructive" : "border-input",
-          !value && "text-muted-foreground"
-        )}
-      >
-        <option value="" disabled>{placeholder}</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
+/**
+ * A native <select> on phones and the styled Select from `md` up. Only one of
+ * the two is rendered, so `id`, `name` and `ref` always reach the control on
+ * screen, and a label or a form library can find and focus it.
+ */
+export const StatePicker = React.forwardRef<HTMLSelectElement | HTMLButtonElement, StatePickerProps>(
+  function StatePicker(
+    {
+      value,
+      onChange,
+      onBlur,
+      error,
+      placeholder = "State",
+      label,
+      options = US_STATE_OPTIONS,
+      id,
+      name,
+      disabled,
+      "aria-describedby": describedBy,
+      "aria-invalid": ariaInvalid,
+    },
+    ref,
+  ) {
+    const mobile = useIsMobile()
+    const open = React.useRef(false)
+    const shared = {
+      id,
+      disabled,
+      "aria-label": label ?? (id ? undefined : "State"),
+      "aria-describedby": describedBy,
+      "aria-invalid": ariaInvalid ?? (error || undefined),
+    }
 
-      {/* ShadCN select — desktop only */}
-      <Select value={value || ""} onValueChange={onChange}>
+    if (mobile) {
+      return (
+        <select
+          ref={ref as React.Ref<HTMLSelectElement>}
+          {...shared}
+          name={name}
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
+          className={cn(
+            "w-full appearance-none bg-background text-base text-foreground rounded-xl border px-4 h-14",
+            "focus:outline-none focus:border-primary",
+            error ? "border-destructive" : "border-input",
+            !value && "text-muted-foreground"
+          )}
+        >
+          <option value="" disabled>{placeholder}</option>
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      )
+    }
+
+    return (
+      <Select
+        value={value || ""}
+        onValueChange={onChange}
+        name={name}
+        disabled={disabled}
+        onOpenChange={(next) => {
+          open.current = next
+        }}
+      >
         <SelectTrigger
-          aria-label={label}
-          aria-invalid={error || undefined}
-          className={cn(inputResponsiveCn(!!error), "hidden md:flex")}
+          ref={ref as React.Ref<HTMLButtonElement>}
+          {...shared}
+          // Opening the list moves focus into it; only leaving the closed control is a blur.
+          onBlur={() => {
+            if (!open.current) onBlur?.()
+          }}
+          className={inputResponsiveCn(!!error)}
         >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
@@ -71,6 +119,6 @@ export function StatePicker({
           ))}
         </SelectContent>
       </Select>
-    </>
-  )
-}
+    )
+  },
+)
