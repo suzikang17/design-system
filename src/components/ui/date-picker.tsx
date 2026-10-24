@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { format, parse, isValid } from "date-fns";
+import * as React from "react";
+import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,139 +16,164 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
-interface DatePickerProps {
+export interface DatePickerProps
+  extends Omit<
+    React.InputHTMLAttributes<HTMLInputElement>,
+    "value" | "defaultValue" | "onChange" | "type" | "min" | "max"
+  > {
+  /** The date as YYYY-MM-DD, or "" for none. */
   value?: string;
+  /** Called with YYYY-MM-DD when a date is committed, and with "" when the field is cleared. */
   onChange?: (value: string) => void;
-  placeholder?: string;
-  disabled?: boolean;
-  className?: string;
-  defaultYear?: number; // For birthday vs future date defaults
-  minDate?: Date; // Disable dates before this date
+  /** The year the calendar opens on while there is no value. Defaults to this year. */
+  defaultYear?: number;
+  /** The earliest date that can be picked or typed. */
+  minDate?: Date;
+  /** The latest date that can be picked or typed. */
+  maxDate?: Date;
 }
 
-export const DatePicker: React.FC<DatePickerProps> = ({
-  value = "",
-  onChange,
-  placeholder = "Select date...",
-  disabled = false,
-  className = "",
-  defaultYear = 1990,
-  minDate,
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [inputValue, setInputValue] = useState(() => {
-    // Convert ISO date to MM/dd/yyyy for consistent display
-    if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      try {
-        const [year, month, day] = value.split('-').map(Number);
-        const dateVal = new Date(year, month - 1, day);
-        if (isValid(dateVal)) {
-          return format(dateVal, 'MM/dd/yyyy');
-        }
-      } catch (e) {
-        // Fall back to original value if parsing fails
-      }
-    }
-    return value;
-  });
+/** A real calendar date, or undefined: there is no February 30. */
+function makeDate(year: number, month: number, day: number): Date | undefined {
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+    ? date
+    : undefined;
+}
 
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
-    if (!value) return undefined;
-    
-    // Try parsing the current value with timezone-safe parsing
-    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      const [year, month, day] = value.split('-').map(Number);
-      return new Date(year, month - 1, day); // Month is 0-indexed
-    }
-    
-    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(value)) {
-      return parse(value, 'MM/dd/yyyy', new Date());
-    }
-    
-    return undefined;
-  });
+function fromISO(value: string): Date | undefined {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return match ? makeDate(+match[1], +match[2], +match[3]) : undefined;
+}
 
-  // Update inputValue and selectedDate when value prop changes
-  useEffect(() => {
-    if (!value) {
-      setInputValue('');
-      setSelectedDate(undefined);
-      return;
-    }
+/** MM/DD/YYYY while typing; M/D/YYYY is also accepted when the field loses focus. */
+function fromTyped(text: string, complete: boolean): Date | undefined {
+  const pattern = complete ? /^(\d{2})\/(\d{2})\/(\d{4})$/ : /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+  const match = pattern.exec(text.trim());
+  return match ? makeDate(+match[3], +match[1], +match[2]) : undefined;
+}
 
-    // Convert ISO date to MM/dd/yyyy for consistent display
-    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      try {
-        const [year, month, day] = value.split('-').map(Number);
-        const dateVal = new Date(year, month - 1, day);
-        if (isValid(dateVal)) {
-          setInputValue(format(dateVal, 'MM/dd/yyyy'));
-          setSelectedDate(dateVal);
-          return;
-        }
-      } catch (e) {
-        // Fall back to original value if parsing fails
-      }
-    }
+const toISO = (date: Date) => format(date, "yyyy-MM-dd");
+const toText = (date: Date) => format(date, "MM/dd/yyyy");
+const dayOf = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+const monthOf = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1);
 
-    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(value)) {
-      const parsedDate = parse(value, 'MM/dd/yyyy', new Date());
-      if (isValid(parsedDate)) {
-        setInputValue(value);
-        setSelectedDate(parsedDate);
-        return;
-      }
-    }
+/**
+ * A date field you can type into or fill from a calendar. Typing commits once
+ * the date is complete and allowed, or when the field loses focus; anything
+ * else reverts. The calendar's month and year menus only change the month on
+ * show, never the value. Props it does not use go to the text input, so `id`,
+ * `name`, `onBlur`, `aria-*` and `ref` wire it to a label or a form library.
+ */
+export const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(function DatePicker(
+  {
+    value = "",
+    onChange,
+    placeholder = "MM/DD/YYYY",
+    disabled = false,
+    className,
+    defaultYear,
+    minDate,
+    maxDate,
+    onBlur,
+    ...inputProps
+  },
+  ref,
+) {
+  const selected = fromISO(value);
+  const allowed = (date: Date) =>
+    (!minDate || date >= dayOf(minDate)) && (!maxDate || date <= dayOf(maxDate));
 
-    // If we can't parse the value, just set it as-is
-    setInputValue(value);
+  const startMonth = () => {
+    if (selected) return monthOf(selected);
+    const today = new Date();
+    const month = new Date(defaultYear ?? today.getFullYear(), today.getMonth(), 1);
+    if (minDate && month < monthOf(minDate)) return monthOf(minDate);
+    if (maxDate && month > maxDate) return monthOf(maxDate);
+    return month;
+  };
+
+  const [text, setText] = React.useState(() => (selected ? toText(selected) : value));
+  const [open, setOpen] = React.useState(false);
+  const [month, setMonth] = React.useState(startMonth);
+  // The value this field last reported. When the parent passes it back, the
+  // text stays as typed, so the caret does not move.
+  const reported = React.useRef(value);
+
+  React.useEffect(() => {
+    if (value === reported.current) return;
+    reported.current = value;
+    const date = fromISO(value);
+    setText(date ? toText(date) : value);
+    if (date) setMonth(monthOf(date));
   }, [value]);
 
-  const handleInputChange = (newValue: string) => {
-    setInputValue(newValue);
-    
-    // Try to parse and validate the date
-    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(newValue)) {
-      const parsedDate = parse(newValue, 'MM/dd/yyyy', new Date());
-      if (isValid(parsedDate)) {
-        setSelectedDate(parsedDate);
-        // Convert to YYYY-MM-DD for storage
-        const year = parsedDate.getFullYear();
-        const month = (parsedDate.getMonth() + 1).toString().padStart(2, '0');
-        const day = parsedDate.getDate().toString().padStart(2, '0');
-        onChange?.(`${year}-${month}-${day}`);
-      }
+  const commit = (next: string) => {
+    reported.current = next;
+    if (next !== value) onChange?.(next);
+  };
+
+  const handleText = (next: string) => {
+    setText(next);
+    if (!next.trim()) return commit("");
+    const date = fromTyped(next, true);
+    if (date && allowed(date)) {
+      commit(toISO(date));
+      setMonth(monthOf(date));
     }
   };
 
-  const handleDateSelect = (date: Date | undefined) => {
-    if (date) {
-      setSelectedDate(date);
-      const formatted = format(date, 'MM/dd/yyyy');
-      setInputValue(formatted);
-      setIsOpen(false);
-      
-      // Convert to YYYY-MM-DD for storage
-      const year = date.getFullYear();
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
-      const day = date.getDate().toString().padStart(2, '0');
-      onChange?.(`${year}-${month}-${day}`);
+  const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
+    const date = fromTyped(text, false);
+    if (!text.trim()) {
+      commit("");
+    } else if (date && allowed(date)) {
+      commit(toISO(date));
+      setText(toText(date));
+      setMonth(monthOf(date));
+    } else {
+      setText(selected ? toText(selected) : value);
     }
+    onBlur?.(event);
   };
+
+  const handleSelect = (date: Date | undefined) => {
+    if (!date) return;
+    commit(toISO(date));
+    setText(toText(date));
+    setOpen(false);
+  };
+
+  const firstYear = Math.min(minDate?.getFullYear() ?? 1920, month.getFullYear());
+  const lastYear = Math.max(maxDate?.getFullYear() ?? 2050, month.getFullYear());
+  const disabledDays = [
+    ...(minDate ? [{ before: minDate }] : []),
+    ...(maxDate ? [{ after: maxDate }] : []),
+  ];
 
   return (
-    <div className={`flex gap-2 ${className}`}>
+    <div className={cn("flex gap-2", className)}>
       <Input
+        ref={ref}
         type="text"
-        value={inputValue}
-        onChange={(e) => handleInputChange(e.target.value)}
+        {...inputProps}
+        value={text}
+        onChange={(e) => handleText(e.target.value)}
+        onBlur={handleBlur}
         placeholder={placeholder}
         disabled={disabled}
         className="flex-1"
       />
-      
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
+
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          if (next) setMonth(startMonth());
+          setOpen(next);
+        }}
+      >
         <PopoverTrigger asChild>
           <Button
             variant="outline"
@@ -163,79 +188,67 @@ export const DatePicker: React.FC<DatePickerProps> = ({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
-          <div>
-            {/* Custom Month/Year Navigation */}
-            <div className="flex items-center justify-between p-3 border-b bg-muted/50">
-              <div className="flex items-center gap-2">
-                <Select
-                  value={(selectedDate?.getMonth() ?? new Date().getMonth()).toString()}
-                  onValueChange={(month) => {
-                    const currentDate = selectedDate || new Date();
-                    const newDate = new Date(currentDate.getFullYear(), parseInt(month), 1);
-                    setSelectedDate(newDate);
-                  }}
-                >
-                  <SelectTrigger className="w-24 h-8 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 12 }, (_, i) => (
-                      <SelectItem key={i} value={i.toString()}>
-                        {format(new Date(2000, i, 1), 'MMM')}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                
-                <Select
-                  value={(selectedDate?.getFullYear() ?? new Date().getFullYear()).toString()}
-                  onValueChange={(year) => {
-                    const currentDate = selectedDate || new Date();
-                    const newDate = new Date(parseInt(year), currentDate.getMonth(), 1);
-                    setSelectedDate(newDate);
-                  }}
-                >
-                  <SelectTrigger className="w-20 h-8 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    {Array.from({ length: 2050 - 1920 + 1 }, (_, i) => {
-                      const year = 2050 - i; // Start from 2050 and go down to 1920
-                      return (
-                        <SelectItem key={year} value={year.toString()}>
-                          {year}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={() => {
-                  const today = new Date();
-                  setSelectedDate(today);
-                }}
+          <div className="flex items-center justify-between gap-2 border-b bg-muted/50 p-3">
+            <div className="flex items-center gap-2">
+              <Select
+                value={String(month.getMonth())}
+                onValueChange={(m) => setMonth(new Date(month.getFullYear(), Number(m), 1))}
               >
-                Today
-              </Button>
+                <SelectTrigger aria-label="Month" className="h-8 w-24 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => (
+                    <SelectItem key={i} value={String(i)}>
+                      {format(new Date(2000, i, 1), "MMM")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={String(month.getFullYear())}
+                onValueChange={(y) => setMonth(new Date(Number(y), month.getMonth(), 1))}
+              >
+                <SelectTrigger aria-label="Year" className="h-8 w-20 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {Array.from({ length: lastYear - firstYear + 1 }, (_, i) => {
+                    const year = lastYear - i;
+                    return (
+                      <SelectItem key={year} value={String(year)}>
+                        {year}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
             </div>
-            
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={handleDateSelect}
-              month={selectedDate || new Date()}
-              onMonthChange={setSelectedDate}
-              className="p-3 pt-0"
-              disabled={minDate ? { before: minDate } : undefined}
-            />
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => setMonth(monthOf(new Date()))}
+            >
+              Today
+            </Button>
           </div>
+
+          <Calendar
+            mode="single"
+            required
+            selected={selected}
+            onSelect={handleSelect}
+            month={month}
+            onMonthChange={setMonth}
+            className="p-3 pt-0"
+            disabled={disabledDays}
+          />
         </PopoverContent>
       </Popover>
     </div>
   );
-};
+});
