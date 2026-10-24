@@ -56,7 +56,6 @@ interface WizardTopBarProps {
   onExit?: () => void;
   phases?: { label: string; stepCount: number }[];
   currentPhase?: number;
-  currentStepInPhase?: number;
   isOptionalStep?: boolean;
   onSkip?: () => void;
   onProgressTap?: () => void;
@@ -81,7 +80,6 @@ export function WizardTopBar({
   onExit,
   phases,
   currentPhase,
-  currentStepInPhase,
   isOptionalStep = false,
   onSkip,
   onProgressTap,

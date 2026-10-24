@@ -19,7 +19,6 @@ describe("WizardTopBar phase stepper", () => {
         onBack={vi.fn()}
         phases={PHASES}
         currentPhase={0}
-        currentStepInPhase={0}
       />
     );
     expect(screen.getByLabelText(/About You/)).toBeInTheDocument();
@@ -40,7 +39,6 @@ describe("WizardTopBar phase stepper", () => {
         onBack={vi.fn()}
         phases={PHASES}
         currentPhase={1}
-        currentStepInPhase={1}
         steps={steps}
       />
     );
@@ -55,7 +53,6 @@ describe("WizardTopBar phase stepper", () => {
         onBack={vi.fn()}
         phases={PHASES}
         currentPhase={1}
-        currentStepInPhase={0}
       />
     );
     expect(screen.getByLabelText("About You — complete")).toBeInTheDocument();
@@ -69,7 +66,6 @@ describe("WizardTopBar phase stepper", () => {
         onBack={vi.fn()}
         phases={[]}
         currentPhase={0}
-        currentStepInPhase={0}
         steps={[{ id: "a", title: "Step A" }, { id: "b", title: "Step B" }, { id: "c", title: "Step C" }]}
       />
     );
@@ -115,7 +111,6 @@ describe("WizardTopBar phase stepper", () => {
         onBack={vi.fn()}
         phases={PHASES}
         currentPhase={PHASES.length} // out of bounds
-        currentStepInPhase={0}
         steps={steps}
       />
     );
