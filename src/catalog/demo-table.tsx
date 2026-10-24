@@ -44,9 +44,6 @@ export const priorityOptions = [
   { value: "High", label: "High" },
 ]
 
-const inList = (row: { getValue: (id: string) => unknown }, id: string, value: string[]) =>
-  value.includes(row.getValue(id) as string)
-
 export const demoColumns: ColumnDef<DemoTask>[] = [
   {
     accessorKey: "id",
@@ -66,7 +63,6 @@ export const demoColumns: ColumnDef<DemoTask>[] = [
   {
     accessorKey: "status",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
-    filterFn: inList,
     cell: ({ row }) => (
       <Badge variant={row.original.status === "Done" ? "default" : "secondary"} className="whitespace-nowrap">
         {row.original.status}
@@ -76,7 +72,6 @@ export const demoColumns: ColumnDef<DemoTask>[] = [
   {
     accessorKey: "priority",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Priority" />,
-    filterFn: inList,
   },
   {
     accessorKey: "estimate",

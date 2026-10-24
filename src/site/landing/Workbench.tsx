@@ -70,7 +70,6 @@ const columns: ColumnDef<Task>[] = [
   {
     accessorKey: "status",
     header: "Status",
-    filterFn: (row, id, value: Status[]) => value.includes(row.getValue(id)),
     cell: ({ row }) => <Badge variant={STATUS_STYLE[row.original.status]} className="whitespace-nowrap">{row.original.status}</Badge>,
   },
   {
