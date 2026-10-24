@@ -4,25 +4,27 @@ export interface MarkdownTable {
 }
 
 /**
- * The first pipe table in a markdown document. Cells are split on `|`; an
- * escaped `\|` inside a cell is not supported.
+ * The first pipe table in a markdown document: the run of lines that start
+ * with `|`, beginning at the first one. Cells are split on `|`; an escaped
+ * `\|` inside a cell is not supported.
  */
 export function parseMarkdownTable(markdown: string): MarkdownTable {
-  const lines = markdown
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith("|"))
+  const all = markdown.split(/\r?\n/).map((line) => line.trim())
+  const start = all.findIndex((line) => line.startsWith("|"))
+  if (start < 0) return { headers: [], rows: [] }
+  const end = all.findIndex((line, i) => i > start && !line.startsWith("|"))
+  const lines = all.slice(start, end < 0 ? undefined : end)
+
   const cells = (line: string) =>
     line
       .replace(/^\|/, "")
       .replace(/\|$/, "")
       .split("|")
       .map((cell) => cell.trim())
-  const isDivider = (line: string) => /^\|?[\s:|-]+\|?$/.test(line) && line.includes("-")
+  // Only the line under the header is the divider; later rows of dashes are data.
+  const hasDivider = lines.length > 1 && /^\|[\s:|-]+\|?$/.test(lines[1]) && lines[1].includes("-")
 
-  const [head, ...rest] = lines
-  if (!head) return { headers: [], rows: [] }
-  return { headers: cells(head), rows: rest.filter((line) => !isDivider(line)).map(cells) }
+  return { headers: cells(lines[0]), rows: lines.slice(hasDivider ? 2 : 1).map(cells) }
 }
 
 export type InlinePart = { text: string; href?: string }

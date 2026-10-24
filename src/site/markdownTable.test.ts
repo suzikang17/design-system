@@ -17,6 +17,19 @@ describe("parseMarkdownTable", () => {
   it("returns nothing for a document without a table", () => {
     expect(parseMarkdownTable("# Title\n\nNo table.")).toEqual({ headers: [], rows: [] })
   })
+
+  it("stops at the end of the first table", () => {
+    const md = "| A | B |\n| --- | --- |\n| 1 | 2 |\n\n## More\n\n| Name | Date |\n| --- | --- |\n| x | y |\n"
+    expect(parseMarkdownTable(md)).toEqual({ headers: ["A", "B"], rows: [["1", "2"]] })
+  })
+
+  it("keeps a data row made only of dashes", () => {
+    const md = "| A | B |\n| --- | --- |\n| - | - |\n| 1 | 2 |\n"
+    expect(parseMarkdownTable(md).rows).toEqual([
+      ["-", "-"],
+      ["1", "2"],
+    ])
+  })
 })
 
 describe("parseInline", () => {
