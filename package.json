@@ -4,14 +4,15 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "pnpm registry && vite",
+    "dev": "pnpm gen:registry --port 5173 && pnpm build:registry && vite",
     "build": "pnpm registry && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "lint": "eslint .",
     "test": "vitest run",
     "gen:registry": "tsx scripts/gen-registry.ts",
-    "registry": "pnpm gen:registry && shadcn build registry.json --output public/r",
+    "build:registry": "shadcn build registry.json --output public/r",
+    "registry": "pnpm gen:registry && pnpm build:registry",
     "new": "tsx scripts/new-component.ts"
   },
   "dependencies": {

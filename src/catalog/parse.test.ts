@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { classifyImports, importSpecifiers, parseShowcaseMeta } from "./parse"
+import { classifyImports, importSpecifiers, isSourceFile, parseShowcaseMeta } from "./parse"
 
 describe("classifyImports", () => {
   it("sorts imports into packages and registry items", () => {
@@ -46,5 +46,12 @@ describe("parseShowcaseMeta", () => {
       source: { name: "Example UI", url: "https://example.com/r/fancy-button" },
       license: "MIT",
     })
+  })
+})
+
+describe("isSourceFile", () => {
+  it("keeps components, hooks and data files, and leaves out showcases and tests", () => {
+    expect(["button.tsx", "use-mobile.tsx", "use-toast.ts", "state-picker.data.ts"].every(isSourceFile)).toBe(true)
+    expect(["button.showcase.tsx", "button.test.tsx", "use-toast.test.ts", "pill.spec.tsx", "notes.md"].some(isSourceFile)).toBe(false)
   })
 })

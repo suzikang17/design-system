@@ -3,6 +3,11 @@
  * `scripts/gen-registry.ts`, so the catalog and the registry agree.
  */
 
+/** A component, hook or data file: not a showcase and not a test. */
+export function isSourceFile(file: string): boolean {
+  return /\.tsx?$/.test(file) && !/\.(showcase|test|spec)\.tsx?$/.test(file)
+}
+
 /** Every module a source file imports or re-exports, in first-seen order. */
 export function importSpecifiers(source: string): string[] {
   const found = new Set<string>()
