@@ -43,25 +43,16 @@ function Preferred() {
 
 function Capped() {
   const [selected, setSelected] = useState(["design", "engineering"])
-  const [note, setNote] = useState("")
-  const toggle = (value: string) => {
-    if (selected.includes(value)) {
-      setSelected(selected.filter((v) => v !== value))
-      setNote("")
-    } else if (selected.length >= 2) {
-      setNote("You can follow up to two topics. Clear one first.")
-    } else {
-      setSelected([...selected, value])
-    }
-  }
+  const toggle = (value: string) =>
+    setSelected((list) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]))
   return (
     <div className="w-full max-w-sm space-y-2">
       <div>
         <Header>Up to two topics</Header>
         <CheckboxList items={TOPICS} selected={selected} onToggle={toggle} maxItems={2} />
       </div>
-      <p aria-live="polite" className="min-h-5 text-xs text-muted-foreground">
-        {note}
+      <p aria-live="polite" className="text-xs text-muted-foreground">
+        {selected.length >= 2 ? "Two of two picked. Clear one to pick another." : `${selected.length} of two picked.`}
       </p>
     </div>
   )
