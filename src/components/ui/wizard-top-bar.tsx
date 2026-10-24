@@ -44,6 +44,12 @@ const DEFAULT_LABELS: WizardTopBarLabels = {
   exit: "Save & Exit",
 };
 
+/** `defaults` with every key of `overrides` that is not undefined. */
+function withDefaults<T extends object>(defaults: T, overrides: Partial<T> = {}): T {
+  const set = Object.entries(overrides).filter(([, value]) => value !== undefined);
+  return { ...defaults, ...Object.fromEntries(set) };
+}
+
 interface WizardTopBarProps {
   currentStep: number;
   totalSteps: number;
@@ -88,7 +94,8 @@ export function WizardTopBar({
   labels,
   className,
 }: WizardTopBarProps) {
-  const text = { ...DEFAULT_LABELS, ...labels };
+  const text = withDefaults(DEFAULT_LABELS, labels);
+  const exitTitleId = React.useId();
   const [stepPickerOpen, setStepPickerOpen] = React.useState(false);
   const [exitConfirmOpen, setExitConfirmOpen] = React.useState(false);
 
@@ -246,7 +253,7 @@ export function WizardTopBar({
 
 
       {/* ── STEP PICKER ───────────────────────────────────────────────────── */}
-      <BottomSheet open={stepPickerOpen} onClose={() => setStepPickerOpen(false)}>
+      <BottomSheet open={stepPickerOpen} onClose={() => setStepPickerOpen(false)} aria-label={text.steps}>
         <div className="px-4 pb-6 pt-2">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             {text.steps}
@@ -295,10 +302,10 @@ export function WizardTopBar({
       </BottomSheet>
 
       {/* ── EXIT CONFIRMATION ─────────────────────────────────────────────── */}
-      <BottomSheet open={exitConfirmOpen} onClose={() => setExitConfirmOpen(false)}>
+      <BottomSheet open={exitConfirmOpen} onClose={() => setExitConfirmOpen(false)} aria-labelledby={exitTitleId}>
         <div className="px-5 pb-6 pt-3 space-y-4">
           <div className="space-y-1">
-            <h3 className="text-base font-bold text-foreground">
+            <h3 id={exitTitleId} className="text-base font-bold text-foreground">
               {text.exitTitle}
             </h3>
             <p className="text-sm text-muted-foreground">

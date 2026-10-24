@@ -118,4 +118,16 @@ describe("WizardTopBar phase stepper", () => {
     const subtitle = screen.getByText(/Step \d+ of \d+/);
     expect(subtitle.textContent).not.toMatch(/of\s*$/); // no trailing "of " with no number
   });
+
+  it("falls back to the default wording for a label passed as undefined", () => {
+    render(
+      <WizardTopBar
+        currentStep={0}
+        totalSteps={3}
+        onBack={vi.fn()}
+        labels={{ stepOf: undefined, back: "Zurück" }}
+      />
+    );
+    expect(screen.getByText("Step 1 of 3")).toBeInTheDocument();
+  });
 });
