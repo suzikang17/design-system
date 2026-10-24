@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply min-h-screen bg-background font-sans text-foreground antialiased;
+  }
+
+  /* Anything that brings no focus style of its own still shows where focus is. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Shiki output: colours come from CSS variables so code follows the theme. */
+.code-block pre {
+  padding: 1rem 1.25rem;
+  background: transparent !important;
+  min-width: max-content;
+}
+.code-block .shiki,
+.code-block .shiki span {
+  color: var(--shiki-light);
+}
+.dark .code-block .shiki,
+.dark .code-block .shiki span {
+  color: var(--shiki-dark);
+}
+
+/* The frame each live example renders in. `transform` makes it the containing
+   block for `position: fixed` children, so bars and sheets stay inside it. */
+.stage {
+  position: relative;
+  display: flex;
+  min-height: 10rem;
+  align-items: center;
+  justify-content: center;
+  overflow-x: auto;
+  border: 1px solid hsl(var(--border));
+  border-radius: calc(var(--radius) + 4px);
+  background-color: hsl(var(--background));
+  background-image: radial-gradient(hsl(var(--border)) 1px, transparent 1px);
+  background-size: 16px 16px;
+  padding: 2.5rem 1rem;
+  transform: translateZ(0);
+}
+@media (min-width: 768px) {
+  .stage {
+    padding: 3rem 2rem;
+  }
+}
