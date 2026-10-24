@@ -1,6 +1,9 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useId } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { format, isValid, isBefore, isAfter, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, type Day } from "date-fns";
 import { CalendarIcon, ChevronLeft, ChevronRight, Check, AlertCircle } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 
@@ -127,25 +130,23 @@ interface YearPickerProps {
 function YearPicker({ selectedYear, onSelect, yearRange = YEAR_RANGE_DEFAULT }: YearPickerProps) {
   const listRef = useRef<HTMLDivElement>(null);
 
+  // Centre the chosen year by scrolling the list itself: scrollIntoView would
+  // scroll the page too.
   useEffect(() => {
-    const el = listRef.current?.querySelector(`[data-year="${selectedYear}"]`) as HTMLElement | null;
-    el?.scrollIntoView({ block: "center" });
+    const list = listRef.current;
+    const el = list?.querySelector<HTMLElement>(`[data-year="${selectedYear}"]`);
+    if (list && el) list.scrollTop = el.offsetTop - (list.clientHeight - el.offsetHeight) / 2;
   }, [selectedYear]);
 
   return (
-    <div
-      ref={listRef}
-      className="overflow-y-auto max-h-64 -mx-4 px-4"
-      onTouchStart={(e) => e.stopPropagation()}
-      onTouchMove={(e) => e.stopPropagation()}
-      onTouchEnd={(e) => e.stopPropagation()}
-    >
+    <div ref={listRef} className="relative overflow-y-auto overscroll-contain max-h-64 -mx-4 px-4">
       <div className="grid grid-cols-4 gap-1.5 py-1">
         {yearRange.map((y) => (
           <button
             key={y}
             type="button"
             data-year={y}
+            aria-pressed={y === selectedYear}
             onClick={() => onSelect(y)}
             className={cn(
               "py-2.5 rounded-xl text-sm font-medium transition-colors",
@@ -171,14 +172,16 @@ interface TriggerFieldProps {
   error?: string;
   onClick: () => void;
   required?: boolean;
+  buttonRef?: React.Ref<HTMLButtonElement>;
 }
 
-function TriggerField({ label, value, placeholder, error, onClick, required }: TriggerFieldProps) {
+function TriggerField({ label, value, placeholder, error, onClick, required, buttonRef }: TriggerFieldProps) {
+  const id = useId();
   const hasValue = Boolean(fromISO(value));
   return (
     <div className="space-y-1.5">
       {label && (
-        <Label className={cn(
+        <Label id={`${id}-label`} htmlFor={id} className={cn(
           "font-medium text-foreground",
           required && "after:content-['*'] after:text-muted-foreground after:ml-0.5"
         )}>
@@ -186,8 +189,14 @@ function TriggerField({ label, value, placeholder, error, onClick, required }: T
         </Label>
       )}
       <button
+        ref={buttonRef}
+        id={id}
         type="button"
         onClick={onClick}
+        aria-labelledby={label ? `${id}-label ${id}` : undefined}
+        aria-haspopup="dialog"
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
         className={cn(
           "w-full h-14 md:h-9 px-4 md:px-3 flex items-center justify-between rounded-xl md:rounded-md text-base md:text-sm bg-background border transition-colors text-left",
           error ? "border-destructive" : "border-input",
@@ -197,13 +206,13 @@ function TriggerField({ label, value, placeholder, error, onClick, required }: T
         <span className={hasValue ? "text-foreground" : "text-muted-foreground"}>
           {hasValue ? displayDate(value) : placeholder}
         </span>
-        <span className="flex items-center gap-1.5 shrink-0">
+        <span aria-hidden="true" className="flex items-center gap-1.5 shrink-0">
           {error && <AlertCircle className="h-4 w-4 text-destructive" />}
           {hasValue && !error && <Check className="h-4 w-4 text-green-600 dark:text-green-400" />}
           <CalendarIcon className={cn("h-4 w-4", error ? "text-destructive" : "text-muted-foreground")} />
         </span>
       </button>
-      {error && <p className="text-destructive text-xs">{error}</p>}
+      {error && <p id={`${id}-error`} className="text-destructive text-xs">{error}</p>}
     </div>
   );
 }
@@ -337,38 +346,37 @@ function CalendarPanel({
 }
 
 // ─── Dual-mode picker container ────────────────────────────────────────────
-// Mobile: bottom sheet with swipe-to-dismiss
-// Desktop: popover anchored to the wrapper
+// Phones: a bottom sheet you can swipe down by its handle.
+// Desktop: a popover under the fields.
+// Both are portalled dialogs: Escape and an outside tap close the calendar
+// alone, focus moves in when it opens and back to the field when it closes.
 
 interface PickerContainerProps {
   open: boolean;
   onClose: () => void;
+  /** The dialog's accessible name. */
+  label: string;
+  /** The fields the popover sits under. Clicks inside them do not close it. */
+  anchorRef: React.RefObject<HTMLDivElement | null>;
+  /** Gets focus back when the picker closes. */
+  returnFocusRef: React.RefObject<HTMLButtonElement | null>;
   children: React.ReactNode;
-  wrapperRef: React.RefObject<HTMLDivElement>;
 }
 
-function PickerContainer({ open, onClose, children, wrapperRef }: PickerContainerProps) {
-  const popoverRef = useRef<HTMLDivElement>(null);
+function PickerContainer({ open, onClose, label, anchorRef, returnFocusRef, children }: PickerContainerProps) {
+  const isMobile = useIsMobile();
   const sheetRef = useRef<HTMLDivElement>(null);
   const dragStart = useRef<number | null>(null);
   const dragY = useRef(0);
 
-  // Close desktop popover on outside click
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (
-        popoverRef.current && !popoverRef.current.contains(e.target as Node) &&
-        wrapperRef.current && !wrapperRef.current.contains(e.target as Node)
-      ) {
-        onClose();
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open, onClose, wrapperRef]);
+  const onOpenChange = (next: boolean) => {
+    if (!next) onClose();
+  };
+  const returnFocus = (event: Event) => {
+    event.preventDefault();
+    returnFocusRef.current?.focus();
+  };
 
-  // Mobile swipe-to-dismiss
   const onTouchStart = (e: React.TouchEvent) => {
     dragStart.current = e.touches[0].clientY;
     dragY.current = 0;
@@ -387,35 +395,52 @@ function PickerContainer({ open, onClose, children, wrapperRef }: PickerContaine
     dragY.current = 0;
   };
 
-  if (!open) return null;
+  if (isMobile) {
+    return (
+      <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/30 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+          <DialogPrimitive.Content
+            ref={sheetRef}
+            aria-describedby={undefined}
+            onCloseAutoFocus={returnFocus}
+            className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-lg rounded-t-2xl bg-popover text-popover-foreground shadow-xl outline-none duration-200 data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom"
+          >
+            <DialogPrimitive.Title className="sr-only">{label}</DialogPrimitive.Title>
+            <div
+              className="flex justify-center pb-2 pt-3 touch-none"
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEnd}
+            >
+              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
+            </div>
+            {children}
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
+    );
+  }
 
   return (
-    <>
-      {/* ── Mobile: bottom sheet ── */}
-      <div className="md:hidden">
-        <div className="fixed inset-0 bg-black/30 z-50" onClick={onClose} />
-        <div
-          ref={sheetRef}
-          className="fixed bottom-0 inset-x-0 z-50 bg-popover text-popover-foreground rounded-t-2xl shadow-xl max-w-lg mx-auto"
-          style={{ animation: "slideUp 200ms ease-out" }}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
+    <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <PopoverPrimitive.Anchor virtualRef={anchorRef} />
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content
+          aria-label={label}
+          align="start"
+          sideOffset={6}
+          collisionPadding={8}
+          onCloseAutoFocus={returnFocus}
+          onInteractOutside={(event) => {
+            if (anchorRef.current?.contains(event.target as Node)) event.preventDefault();
+          }}
+          className="z-50 w-80 rounded-2xl border border-border bg-popover text-popover-foreground shadow-xl outline-none animate-in fade-in slide-in-from-top-1 duration-150"
         >
-          <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mt-3 mb-2" />
           {children}
-        </div>
-        <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
-      </div>
-
-      {/* ── Desktop: popover ── */}
-      <div
-        ref={popoverRef}
-        className="hidden md:block absolute top-full left-0 mt-1.5 z-50 bg-popover text-popover-foreground rounded-2xl shadow-xl border border-border w-80 animate-in fade-in slide-in-from-top-1 duration-150"
-      >
-        {children}
-      </div>
-    </>
+        </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
+    </PopoverPrimitive.Root>
   );
 }
 
@@ -456,6 +481,9 @@ export function DateRangeSheet({
   const [yearPickerOpen, setYearPickerOpen] = useState(false);
   const [viewMonth, setViewMonth] = useState<Date>(() => fromISO(startValue) ?? new Date());
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const startButton = useRef<HTMLButtonElement>(null);
+  const endButton = useRef<HTMLButtonElement>(null);
+  const returnTo = useRef<HTMLButtonElement | null>(null);
 
   const startDate = fromISO(startValue);
   const endDate = fromISO(endValue);
@@ -465,11 +493,16 @@ export function DateRangeSheet({
     setYearPickerOpen(false);
     const ref = which === "start" ? fromISO(startValue) : fromISO(endValue) ?? fromISO(startValue);
     setViewMonth(ref ?? new Date());
+    returnTo.current = which === "start" ? startButton.current : endButton.current;
     setOpen(true);
   };
 
   const handleDaySelect = (day: Date) => {
-    if (selecting === "start") {
+    if (hideEnd) {
+      // An open-ended range has no end to pick: the start is the whole answer.
+      onStartChange(toISO(day));
+      setOpen(false);
+    } else if (selecting === "start") {
       onStartChange(toISO(day));
       if (endDate && (isBefore(endDate, day) || isSameDay(endDate, day))) {
         onEndChange("");
@@ -488,7 +521,7 @@ export function DateRangeSheet({
   };
 
   return (
-    <div ref={wrapperRef} className="relative grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div ref={wrapperRef} className="grid grid-cols-1 md:grid-cols-2 gap-3">
       <TriggerField
         label={startLabel}
         value={startValue}
@@ -496,6 +529,7 @@ export function DateRangeSheet({
         error={startError}
         onClick={() => openFor("start")}
         required={required}
+        buttonRef={startButton}
       />
       {hideEnd ? (
         <div className="space-y-1.5">
@@ -512,10 +546,17 @@ export function DateRangeSheet({
           error={endError}
           onClick={() => openFor("end")}
           required={required}
+          buttonRef={endButton}
         />
       )}
 
-      <PickerContainer open={open} onClose={() => setOpen(false)} wrapperRef={wrapperRef}>
+      <PickerContainer
+        open={open}
+        onClose={() => setOpen(false)}
+        label={hideEnd ? startLabel : `${startLabel} and ${endLabel}`}
+        anchorRef={wrapperRef}
+        returnFocusRef={returnTo}
+      >
         <CalendarPanel
           selecting={selecting}
           setSelecting={setSelecting}
@@ -564,6 +605,7 @@ export function DateSheet({
   const [yearPickerOpen, setYearPickerOpen] = useState(false);
   const [viewMonth, setViewMonth] = useState<Date>(() => fromISO(value) ?? new Date());
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
 
   const selected = fromISO(value);
 
@@ -579,7 +621,7 @@ export function DateSheet({
   };
 
   return (
-    <div ref={wrapperRef} className="relative">
+    <div ref={wrapperRef}>
       <TriggerField
         label={label}
         value={value}
@@ -587,9 +629,16 @@ export function DateSheet({
         error={error}
         onClick={openPicker}
         required={required}
+        buttonRef={button}
       />
 
-      <PickerContainer open={open} onClose={() => setOpen(false)} wrapperRef={wrapperRef}>
+      <PickerContainer
+        open={open}
+        onClose={() => setOpen(false)}
+        label={label}
+        anchorRef={wrapperRef}
+        returnFocusRef={button}
+      >
         <CalendarPanel
           singleDate
           selecting="start"
