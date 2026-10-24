@@ -4,6 +4,7 @@
  * to overwrite either file.
  */
 import { existsSync, writeFileSync } from "node:fs"
+import { titleFromName } from "../src/catalog/parse"
 
 const name = process.argv[2] ?? ""
 if (!/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(name)) {
@@ -11,14 +12,8 @@ if (!/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(name)) {
   process.exit(1)
 }
 
-const pascal = name
-  .split("-")
-  .map((word) => word[0].toUpperCase() + word.slice(1))
-  .join("")
-const title = name
-  .split("-")
-  .map((word) => word[0].toUpperCase() + word.slice(1))
-  .join(" ")
+const title = titleFromName(name)
+const pascal = title.replace(/ /g, "")
 
 const component = `import * as React from "react"
 
