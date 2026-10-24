@@ -1,0 +1,33 @@
+/* Sky: light, cool blue primary with a warm orange accent. The default theme. */
+:where(:root),
+[data-theme="sky"] {
+  color-scheme: light;
+
+  --background: 210 40% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --primary: 201 96% 32%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 19% 38%;
+  --accent: 27 100% 93%;
+  --accent-foreground: 20 75% 24%;
+  --destructive: 0 72% 45%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 32% 91%;
+  --input: 214 28% 84%;
+  --ring: 201 96% 32%;
+  --radius: 0.5rem;
+
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 222 47% 11%;
+  --sidebar-border: 214 32% 91%;
+  --sidebar-ring: 201 96% 32%;
+  --sidebar-accent: 210 40% 96%;
+  --sidebar-accent-foreground: 222 47% 11%;
+}
