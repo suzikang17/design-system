@@ -8,7 +8,20 @@ export default {
   group: "Data",
   description: "A dashed filter button that opens a searchable list of a column's values, with counts, and shows what is selected.",
   examples: {
-    "Filter by status and priority": () => (
+    "Options with icons": () => (
+      <div className="w-full self-start">
+        <DataTable
+          columns={demoColumns.slice(1)}
+          data={demoTasks}
+          pageSize={5}
+          pageSizeOptions={[5, 10]}
+          toolbar={({ table }) => (
+            <DataTableFacetedFilter column={table.getColumn("status")} title="Status" options={statusOptions} />
+          )}
+        />
+      </div>
+    ),
+    "Two filters together": () => (
       <div className="w-full self-start">
         <DataTable
           columns={demoColumns.slice(1)}
