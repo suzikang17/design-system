@@ -42,16 +42,19 @@
   color: var(--shiki-dark);
 }
 
-/* The frame each live example renders in. On phones a wide example scrolls
-   sideways. From md up the frame clips sideways only, so a menu that opens
-   downward (the date range popover) can spill over what comes next. */
+/* The frame each live example renders in. It clips sideways only, at every
+   width, so menus, popovers and tooltips that open past its top or bottom
+   (the navigation menu's panel on a phone) stay visible. A sideways scroll
+   would clip them: CSS turns overflow-y to auto alongside it. An example
+   wider than the frame starts at its left edge; give it its own scroll
+   container. */
 .stage {
   position: relative;
   display: flex;
   min-height: 10rem;
   align-items: center;
-  justify-content: center;
-  overflow-x: auto;
+  justify-content: safe center;
+  overflow-x: clip;
   border: 1px solid hsl(var(--border));
   border-radius: calc(var(--radius) + 4px);
   background-color: hsl(var(--background));
@@ -61,7 +64,6 @@
 }
 @media (min-width: 768px) {
   .stage {
-    overflow-x: clip;
     padding: 3rem 2rem;
   }
 }

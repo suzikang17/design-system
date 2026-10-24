@@ -20,31 +20,34 @@ export default {
   group: "Navigation",
   description: "A site's top navigation, with panels of links that open on hover or focus.",
   examples: {
+    // On a phone the menu starts at the frame's left edge, so its panel fits inside the frame.
     "Top navigation": () => (
-      <NavigationMenu>
-        <NavigationMenuList>
-          <NavigationMenuItem>
-            <NavigationMenuTrigger>Products</NavigationMenuTrigger>
-            <NavigationMenuContent>
-              <ul className="grid w-[18rem] gap-1 p-2 sm:w-[22rem]">
-                {PRODUCTS.map(([name, blurb]) => (
-                  <li key={name}>
-                    <NavigationMenuLink href="#" className="block rounded-md p-3 hover:bg-accent hover:text-accent-foreground">
-                      <span className="block text-sm font-medium">{name}</span>
-                      <span className="block text-sm text-muted-foreground">{blurb}</span>
-                    </NavigationMenuLink>
-                  </li>
-                ))}
-              </ul>
-            </NavigationMenuContent>
-          </NavigationMenuItem>
-          <NavigationMenuItem>
-            <NavigationMenuLink href="#" className={navigationMenuTriggerStyle()}>
-              Pricing
-            </NavigationMenuLink>
-          </NavigationMenuItem>
-        </NavigationMenuList>
-      </NavigationMenu>
+      <div className="flex w-full justify-start sm:justify-center">
+        <NavigationMenu>
+          <NavigationMenuList>
+            <NavigationMenuItem>
+              <NavigationMenuTrigger>Products</NavigationMenuTrigger>
+              <NavigationMenuContent>
+                <ul className="grid w-[18rem] gap-1 p-2 sm:w-[22rem]">
+                  {PRODUCTS.map(([name, blurb]) => (
+                    <li key={name}>
+                      <NavigationMenuLink href="#" className="block rounded-md p-3 hover:bg-accent hover:text-accent-foreground">
+                        <span className="block text-sm font-medium">{name}</span>
+                        <span className="block text-sm text-muted-foreground">{blurb}</span>
+                      </NavigationMenuLink>
+                    </li>
+                  ))}
+                </ul>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <NavigationMenuLink href="#" className={navigationMenuTriggerStyle()}>
+                Pricing
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+          </NavigationMenuList>
+        </NavigationMenu>
+      </div>
     ),
   },
 } satisfies Showcase
