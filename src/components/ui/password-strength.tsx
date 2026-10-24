@@ -11,6 +11,10 @@ const DEFAULT_LABELS: PasswordStrengthLabels = {
   strong: "Strong",
 };
 
+/** The keys of `labels` that are set, so an undefined one falls back to the default. */
+const definedOnly = (labels: Partial<PasswordStrengthLabels> = {}) =>
+  Object.fromEntries(Object.entries(labels).filter(([, word]) => word !== undefined));
+
 interface PasswordStrengthProps {
   password: string;
   /** The words shown under the meter. */
@@ -31,6 +35,8 @@ function getStrength(password: string): StrengthLevel {
   if (/[A-Z]/.test(password)) score += 1;
   if (/[0-9]/.test(password)) score += 1;
   if (/[^A-Za-z0-9]/.test(password)) score += 1;
+  // Mixing characters does not make up for length: under 8 is always weak.
+  if (password.length < 8) score = Math.min(score, 1);
 
   if (score <= 1) {
     return { score, key: "weak", color: "bg-red-500", textColor: "text-red-700 dark:text-red-400" };
@@ -47,7 +53,7 @@ export function PasswordStrength({ password, labels }: PasswordStrengthProps) {
   if (!password) return null;
 
   const strength = getStrength(password);
-  const words = { ...DEFAULT_LABELS, ...labels };
+  const words = { ...DEFAULT_LABELS, ...definedOnly(labels) };
 
   return (
     <div className="space-y-1.5">
