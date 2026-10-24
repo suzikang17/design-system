@@ -13,7 +13,7 @@ export default {
   description: "The styled parts of an HTML table: header, body, rows, cells and caption.",
   examples: {
     Invoices: () => (
-      <div className="w-full max-w-md rounded-lg border">
+      <div className="w-full max-w-md overflow-hidden rounded-lg border">
         <Table>
           <TableCaption className="pb-3">Invoices this month</TableCaption>
           <TableHeader>

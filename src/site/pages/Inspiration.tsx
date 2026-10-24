@@ -18,7 +18,7 @@ export default function Inspiration() {
         Components from elsewhere worth learning from or adopting. Edit <code className="font-mono text-foreground">inspiration.md</code>{" "}
         to change this list.
       </p>
-      <div className="mt-8 rounded-lg border">
+      <div className="mt-8 overflow-hidden rounded-lg border">
         <Table>
           <TableHeader>
             <TableRow>
