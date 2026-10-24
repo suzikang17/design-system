@@ -85,6 +85,16 @@ const Carousel = React.forwardRef<
 
     const handleKeyDown = React.useCallback(
       (event: React.KeyboardEvent<HTMLDivElement>) => {
+        // Arrow keys belong to a text field, or to a widget inside a slide
+        // that already used them (a slider, tabs, a radio group).
+        const target = event.target as HTMLElement
+        if (
+          event.defaultPrevented ||
+          target.isContentEditable ||
+          target.closest("input, textarea, select")
+        ) {
+          return
+        }
         if (event.key === "ArrowLeft") {
           event.preventDefault()
           scrollPrev()
@@ -134,7 +144,7 @@ const Carousel = React.forwardRef<
       >
         <div
           ref={ref}
-          onKeyDownCapture={handleKeyDown}
+          onKeyDown={handleKeyDown}
           className={cn("relative", className)}
           role="region"
           aria-roledescription="carousel"
@@ -201,6 +211,7 @@ const CarouselPrevious = React.forwardRef<
   return (
     <Button
       ref={ref}
+      type="button"
       variant={variant}
       size={size}
       className={cn(
@@ -230,6 +241,7 @@ const CarouselNext = React.forwardRef<
   return (
     <Button
       ref={ref}
+      type="button"
       variant={variant}
       size={size}
       className={cn(
