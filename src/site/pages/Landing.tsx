@@ -7,14 +7,12 @@ import { cn } from "@/lib/utils"
 import site from "@/site.config"
 import { ThemeGallery } from "../landing/ThemeGallery"
 import { Workbench } from "../landing/Workbench"
-import { useTheme } from "../theme"
 import { useTitle } from "../useTitle"
 
 const cta = (variant: "default" | "outline") => cn(buttonVariants({ variant, size: "lg" }), "rounded-full px-6")
 
 export default function Landing() {
   useTitle()
-  const { theme } = useTheme()
 
   return (
     <div data-ready="">
@@ -44,7 +42,7 @@ export default function Landing() {
 
       <ThemeGallery />
       <Inside />
-      <Toaster theme={theme.dark ? "dark" : "light"} />
+      <Toaster />
     </div>
   )
 }

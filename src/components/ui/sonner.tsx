@@ -1,14 +1,27 @@
-import { useTheme } from "next-themes"
+import * as React from "react"
 import { Toaster as Sonner } from "sonner"
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
+// The page's theme, read from the root element: the `dark` class, or data-theme="dark".
+function subscribe(onChange: () => void) {
+  const observer = new MutationObserver(onChange)
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-theme"] })
+  return () => observer.disconnect()
+}
+
+function pageTheme(): "light" | "dark" {
+  const root = document.documentElement
+  return root.classList.contains("dark") || root.dataset.theme === "dark" ? "dark" : "light"
+}
+
+/** Toasts follow the page's light or dark theme, not the operating system's. Pass `theme` to override. */
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
+  const theme = React.useSyncExternalStore(subscribe, pageTheme, () => "light" as const)
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={theme}
       className="toaster group"
       toastOptions={{
         classNames: {
