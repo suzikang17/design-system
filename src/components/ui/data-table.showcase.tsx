@@ -1,11 +1,14 @@
 import { useState } from "react"
+import type { ColumnDef } from "@tanstack/react-table"
+import { ChevronRight } from "lucide-react"
 
-import { demoColumns, demoTasks, priorityOptions, statusOptions } from "@/catalog/demo-table"
+import { demoColumns, demoTasks, priorityOptions, statusOptions, type DemoTask } from "@/catalog/demo-table"
 import type { Showcase } from "@/catalog/types"
 import { DataTable } from "@/components/ui/data-table"
 import { DataTableFacetedFilter } from "@/components/ui/data-table-faceted-filter"
 import { DataTableViewOptions } from "@/components/ui/data-table-view-options"
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 
 function FullTable() {
   const [query, setQuery] = useState("")
@@ -38,6 +41,24 @@ function FullTable() {
   )
 }
 
+/** A chevron per row that opens the row's panel and turns to show it is open. */
+const expandColumn: ColumnDef<DemoTask> = {
+  id: "expand",
+  size: 44,
+  header: () => <span className="sr-only">Details</span>,
+  cell: ({ row }) => (
+    <button
+      type="button"
+      aria-expanded={row.getIsExpanded()}
+      aria-label={`Details for ${row.original.title}`}
+      onClick={row.getToggleExpandedHandler()}
+      className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+    >
+      <ChevronRight aria-hidden="true" className={cn("size-4 transition-transform", row.getIsExpanded() && "rotate-90")} />
+    </button>
+  ),
+}
+
 export default {
   title: "Data Table",
   group: "Data",
@@ -48,7 +69,7 @@ export default {
     "Rows that expand": () => (
       <div className="w-full self-start">
         <DataTable
-          columns={demoColumns.slice(0, 4)}
+          columns={[expandColumn, ...demoColumns.slice(0, 4)]}
           data={demoTasks.slice(0, 4)}
           pageSize={10}
           pageSizeOptions={[10]}
