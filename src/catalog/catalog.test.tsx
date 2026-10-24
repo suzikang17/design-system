@@ -3,11 +3,11 @@ import { cleanup, render } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
 import { entries, GROUPS } from "@/catalog"
-import { parseShowcaseMeta } from "@/catalog/parse"
+import { isSourceFile, parseShowcaseMeta } from "@/catalog/parse"
 
 const UI = "src/components/ui"
 const componentFiles = readdirSync(UI)
-  .filter((file) => file.endsWith(".tsx") && !file.endsWith(".showcase.tsx"))
+  .filter((file) => file.endsWith(".tsx") && isSourceFile(file))
   .map((file) => file.replace(/\.tsx$/, ""))
   .sort()
 
