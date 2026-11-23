@@ -23,6 +23,7 @@ import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 import ts from "typescript"
 
+import { parseClientMeta } from "../src/client/catalog/parseMeta"
 import { isSourceFile, parseShowcaseMeta, titleFromName } from "../src/catalog/parse"
 import { themes } from "../src/themes"
 import tailwindConfig from "../tailwind.config"
@@ -138,6 +139,7 @@ export function resolveHomepage(env: Record<string, string | undefined>, localPo
 }
 
 type FileType = "registry:ui" | "registry:lib" | "registry:hook"
+type ClientFileType = FileType | "registry:component" | "registry:file"
 
 interface TailwindExtend {
   colors?: Record<string, unknown>
@@ -147,14 +149,14 @@ interface TailwindExtend {
 
 export interface RegistryItem {
   name: string
-  type: FileType | "registry:theme"
+  type: FileType | "registry:theme" | "registry:component" | "registry:item"
   title?: string
   description?: string
   categories?: string[]
   meta?: Record<string, unknown>
   dependencies?: string[]
   registryDependencies?: string[]
-  files?: { path: string; type: FileType }[]
+  files?: { path: string; type: ClientFileType; target?: string }[]
   tailwind?: { config: { theme: { extend: TailwindExtend } } }
   cssVars?: { light?: Record<string, string>; dark?: Record<string, string> }
 }
@@ -234,6 +236,97 @@ export function buildRegistry(homepage: string, root = ".") {
   const THEMES = "src/styles/themes"
   const list = (dir: string) => (existsSync(at(dir)) ? readdirSync(at(dir)).sort() : [])
 
+  /**
+   * The client pieces under src/client, published as `client-<id>`, `client-base` and `client-look-<id>`. Their rules
+   * differ from the items above: files keep their repo path on install (`target: ~/<path>`), so relative imports
+   * and CSS imports between shipped files keep resolving; they import each other by relative path only, never `@/`.
+   * Packages come from the meta and from bare imports; every one must be in package.json.
+   */
+  function clientItems(): RegistryItem[] {
+    const CLIENT = "src/client"
+    if (!existsSync(at(CLIENT))) return []
+    const shippable = (path: string) => !/\.(meta|test|spec)\.tsx?$/.test(path)
+    const unique = (xs: readonly string[]) => [...new Set(xs)].sort()
+
+    const fileEntry = (path: string) => {
+      let type: ClientFileType = "registry:file"
+      if (path.endsWith(".tsx")) type = "registry:component"
+      else if (path.startsWith(`${CLIENT}/hooks/`)) type = "registry:hook"
+      else if (path.endsWith(".ts")) type = "registry:lib"
+      return { path, type, target: `~/${path}` }
+    }
+    const checkedPackage = (dep: string, path: string) => {
+      if (!pkg.dependencies?.[dep]) throw new Error(`${path} imports "${dep}", which is not in package.json dependencies.`)
+      return published(dep, path)
+    }
+    /** Bare packages a shipped .ts/.tsx file imports. Relative imports are fine; `@/` cannot be carried. */
+    const packagesOf = (path: string): string[] => {
+      if (!/\.tsx?$/.test(path)) return []
+      const found: string[] = []
+      for (const spec of importSpecifiers(read(path), path)) {
+        if (spec.startsWith(".")) continue
+        if (spec.startsWith("@/")) {
+          throw new Error(`${path}: Unsupported import "${spec}": client files import each other by relative path.`)
+        }
+        const name = packageName(spec)
+        if (!REACT.has(name)) found.push(name)
+      }
+      return found
+    }
+
+    const base: RegistryItem = {
+      name: "client-base",
+      type: "registry:item",
+      title: "Client base",
+      description: "Token contract, base styles and shared hooks that every client piece needs.",
+      files: [
+        `${CLIENT}/tokens/contract.ts`,
+        `${CLIENT}/tokens/base.css`,
+        ...list(`${CLIENT}/hooks`).filter(isSourceFile).map((file) => `${CLIENT}/hooks/${file}`),
+      ].map(fileEntry),
+    }
+    const basePackages = unique(base.files!.flatMap((f) => packagesOf(f.path)))
+    if (basePackages.length) base.dependencies = basePackages.map((dep) => checkedPackage(dep, base.files![0].path))
+
+    const components = list(`${CLIENT}/components`).map((id): RegistryItem => {
+      const metaPath = `${CLIENT}/components/${id}/${id}.meta.ts`
+      const meta = parseClientMeta(read(metaPath), metaPath)
+      const paths = meta.files.filter(shippable)
+      const deps = meta.registryDependencies.map((dep) => (dep === "base" ? "client-base" : `client-${dep}`))
+      const packages = unique([...meta.dependencies, ...paths.flatMap(packagesOf)])
+      const item: RegistryItem = {
+        name: `client-${meta.id}`,
+        type: "registry:component",
+        title: titleFromName(meta.id),
+        description: meta.summary,
+        registryDependencies: ["client-base", ...unique(deps).filter((n) => n !== "client-base")].map(itemUrl),
+        files: paths.map(fileEntry),
+      }
+      if (packages.length) item.dependencies = packages.map((dep) => checkedPackage(dep, paths[0]))
+      return item
+    })
+
+    const looks = list(`${CLIENT}/tokens/themes`)
+      .filter((file) => file.endsWith(".css"))
+      .map((file): RegistryItem => {
+        const id = stem(file)
+        const path = `${CLIENT}/tokens/themes/${file}`
+        const fonts = unique((read(path).match(/@fontsource\/[a-z0-9-]+/g) ?? []))
+        const item: RegistryItem = {
+          name: `client-look-${id}`,
+          type: "registry:item",
+          title: `${titleFromName(id)} look`,
+          description: `The ${id} look's token values and fonts.`,
+          registryDependencies: [itemUrl("client-base")],
+          files: [fileEntry(path)],
+        }
+        if (fonts.length) item.dependencies = fonts.map((dep) => checkedPackage(dep, path))
+        return item
+      })
+
+    return [base, ...components, ...looks]
+  }
+
   const libItems = [codeItem("utils", "registry:lib", ["src/lib/utils.ts"], { title: "utils", description: "The cn() class-name helper." })]
 
   const hookItems = list(HOOKS)
@@ -274,7 +367,7 @@ export function buildRegistry(homepage: string, root = ".") {
       }
     })
 
-  const items = [...libItems, ...hookItems, ...uiItems, ...themeItems]
+  const items = [...libItems, ...hookItems, ...uiItems, ...themeItems, ...clientItems()]
   const seen = new Set<string>()
   for (const item of items) {
     if (seen.has(item.name)) throw new Error(`Two registry items are named "${item.name}".`)
