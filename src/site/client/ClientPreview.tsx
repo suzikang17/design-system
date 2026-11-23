@@ -71,7 +71,7 @@ function PreviewBody({ meta }: { meta: ComponentMeta<any> }) {
       const piece = element.firstElementChild
       if (!piece) return
       const style = getComputedStyle(element)
-      const height = piece.getBoundingClientRect().height + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
+      const height = piece.getBoundingClientRect().height + (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0)
       window.parent.postMessage({ type: "ds:height", height } satisfies PreviewReport, window.location.origin)
     }
     const observer = new ResizeObserver(report)

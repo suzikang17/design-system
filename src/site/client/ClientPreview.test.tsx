@@ -2,6 +2,7 @@ import { act, render, screen } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { getMeta } from "@/client/catalog/registry"
 import { App } from "../App"
 import "./test-utils" // the longer wait for lazy pages
 
@@ -119,17 +120,50 @@ describe("the bare preview of a piece", () => {
 })
 
 describe("telling the framing page how tall the piece is", () => {
-  it("posts the piece's height, with the root's padding, to its parent at its own origin", async () => {
-    const parent = { postMessage: vi.fn() }
-    const original = Object.getOwnPropertyDescriptor(window, "parent")
-    Object.defineProperty(window, "parent", { value: parent, configurable: true })
+  const original = Object.getOwnPropertyDescriptor(window, "parent")
+  const parent = { postMessage: vi.fn() }
+  const measured = { paddingTop: "32px", paddingBottom: "32px", backgroundColor: "rgb(1, 2, 3)" } as CSSStyleDeclaration
+
+  beforeEach(() => {
+    parent.postMessage.mockClear()
     vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} })
+    const real = window.getComputedStyle.bind(window)
+    // Only the piece's root is measured by stub: jsdom has no Tailwind, so it has no padding of its own.
+    vi.spyOn(window, "getComputedStyle").mockImplementation((element, pseudo) => (element.classList.contains("ds-root") ? measured : real(element, pseudo)))
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({ height: 120 } as DOMRect)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+    if (original) Object.defineProperty(window, "parent", original)
+  })
+
+  const frameIt = () => Object.defineProperty(window, "parent", { value: parent, configurable: true })
+
+  it("posts the piece's height plus the root's padding, exactly, to its parent at its own origin", async () => {
+    frameIt()
+    await openPreview("/client/preview/button?look=wecuratelife")
+    expect(parent.postMessage).toHaveBeenCalledWith({ type: "ds:height", height: 184 }, window.location.origin)
+  })
+
+  it("does not post for a scroll-layout piece", async () => {
+    const button = getMeta("button")!
+    const layout = button.layout
+    button.layout = "scroll"
     try {
+      frameIt()
       await openPreview("/client/preview/button?look=wecuratelife")
-      expect(parent.postMessage).toHaveBeenCalledWith({ type: "ds:height", height: expect.any(Number) }, window.location.origin)
+      expect(parent.postMessage).not.toHaveBeenCalled()
     } finally {
-      vi.unstubAllGlobals()
-      if (original) Object.defineProperty(window, "parent", original)
+      button.layout = layout
     }
+  })
+
+  it("does not post when the preview is opened on its own, with no frame around it", async () => {
+    const post = vi.spyOn(window, "postMessage")
+    await openPreview("/client/preview/button?look=wecuratelife")
+    expect(parent.postMessage).not.toHaveBeenCalled()
+    expect(post).not.toHaveBeenCalledWith(expect.objectContaining({ type: "ds:height" }), expect.anything())
   })
 })

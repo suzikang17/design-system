@@ -85,6 +85,10 @@ test("a tall piece is shown whole in its page's preview frame (the Photo is not 
   await page.goto("client/photo?look=wecuratelife")
   const frame = page.frameLocator("iframe")
   await expect(frame.locator(".ds-photo").first()).toBeVisible()
+  // the image itself loaded (the frame must not just be tall around an empty well)
+  await expect
+    .poll(() => frame.locator(".ds-photo img").first().evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
+    .toBe(true)
   // The frame grows to the height the piece reports, so give the report a moment to land.
   await expect
     .poll(async () => {
