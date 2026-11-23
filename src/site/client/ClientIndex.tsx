@@ -113,7 +113,7 @@ const makeInert = (element: HTMLElement | null) => element?.setAttribute("inert"
  */
 function PieceCard({ meta, look }: { meta: AnyMeta; look: ThemeId }) {
   const summaryId = useId()
-  const Piece = meta.component
+  const Piece = meta.demo ?? meta.component
   return (
     <div className="group relative flex h-full flex-col overflow-hidden rounded-lg border bg-card text-card-foreground transition-colors hover:border-primary/50 has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-ring has-[a:focus-visible]:ring-offset-2 has-[a:focus-visible]:ring-offset-background">
       <div ref={makeInert} aria-hidden="true" data-card-view="" className="pointer-events-none relative aspect-[4/3] overflow-hidden border-b">

@@ -1,0 +1,16 @@
+/* Container: centres content, capped at a width, inside the look's side gutters. The cap includes the gutters, as
+   it does in the sections (steps, hero), so their content and a `page` container's share the same edges. */
+.ds-container {
+  --_ds-container-max: 1180px;
+
+  box-sizing: border-box;
+  inline-size: 100%;
+  max-inline-size: var(--_ds-container-max);
+  margin-inline: auto;
+  padding-inline: var(--ds-gutter);
+}
+.ds-container--text { --_ds-container-max: 720px; }
+.ds-container--wide { --_ds-container-max: 1440px; }
+.ds-container--full { --_ds-container-max: none; }
+.ds-container--flush { padding-inline: 0; }
+.ds-container--pad { padding-block: var(--ds-space-section); }

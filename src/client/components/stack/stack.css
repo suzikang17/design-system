@@ -1,0 +1,19 @@
+/* Stack: children one under another, evenly spaced. The spacing steps are the same in Row, Columns and Grid. */
+.ds-stack {
+  --_ds-stack-gap: 24px;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--_ds-stack-gap);
+  min-inline-size: 0;
+}
+.ds-stack > * { min-inline-size: 0; }
+.ds-stack--gap-none { --_ds-stack-gap: 0px; }
+.ds-stack--gap-xs { --_ds-stack-gap: 8px; }
+.ds-stack--gap-sm { --_ds-stack-gap: 16px; }
+.ds-stack--gap-lg { --_ds-stack-gap: 40px; }
+.ds-stack--gap-xl { --_ds-stack-gap: 64px; }
+.ds-stack--stretch { align-items: stretch; }
+.ds-stack--start { align-items: flex-start; }
+.ds-stack--center { align-items: center; }
+.ds-stack--end { align-items: flex-end; }

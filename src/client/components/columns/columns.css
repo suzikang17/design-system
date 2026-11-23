@@ -1,0 +1,38 @@
+/* Columns: children share the width by a split (set inline as a grid template) and become one stack when the
+   Columns itself is too narrow. The outer element is the container the stacking is measured against. */
+.ds-columns {
+  --_ds-columns-gap: 24px;
+  --_ds-columns-template: minmax(0, 1fr) minmax(0, 1fr);
+
+  container-type: inline-size;
+  min-inline-size: 0;
+}
+.ds-columns__grid {
+  display: grid;
+  grid-template-columns: var(--_ds-columns-template);
+  gap: var(--_ds-columns-gap);
+  align-items: start;
+}
+.ds-columns__grid > * { min-inline-size: 0; }
+.ds-columns--gap-none { --_ds-columns-gap: 0px; }
+.ds-columns--gap-xs { --_ds-columns-gap: 8px; }
+.ds-columns--gap-sm { --_ds-columns-gap: 16px; }
+.ds-columns--gap-lg { --_ds-columns-gap: 40px; }
+.ds-columns--gap-xl { --_ds-columns-gap: 64px; }
+.ds-columns--center > .ds-columns__grid { align-items: center; }
+.ds-columns--end > .ds-columns__grid { align-items: end; }
+.ds-columns--stretch > .ds-columns__grid { align-items: stretch; }
+
+/* stacked: one column; with reverse, the last child first */
+@container (max-width: 479.98px) {
+  .ds-columns--stack-sm > .ds-columns__grid { display: flex; flex-direction: column; align-items: stretch; }
+  .ds-columns--stack-sm.ds-columns--reverse > .ds-columns__grid { flex-direction: column-reverse; }
+}
+@container (max-width: 639.98px) {
+  .ds-columns--stack-md > .ds-columns__grid { display: flex; flex-direction: column; align-items: stretch; }
+  .ds-columns--stack-md.ds-columns--reverse > .ds-columns__grid { flex-direction: column-reverse; }
+}
+@container (max-width: 899.98px) {
+  .ds-columns--stack-lg > .ds-columns__grid { display: flex; flex-direction: column; align-items: stretch; }
+  .ds-columns--stack-lg.ds-columns--reverse > .ds-columns__grid { flex-direction: column-reverse; }
+}

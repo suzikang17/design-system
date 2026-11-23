@@ -1,15 +1,17 @@
 import "@/client/tokens/all.css"
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEvent, type MouseEvent } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type DragEvent, type MouseEvent, type ReactNode } from "react"
 import { useLocation } from "react-router-dom"
 import { ArrowDown, ArrowUp, GripVertical, Trash2 } from "lucide-react"
 
+import { Container } from "@/client/components/container/Container"
 import { cn } from "@/lib/utils"
 import type { PreviewMessage } from "./parts/PreviewFrame"
 import { PreviewFit } from "./parts/PreviewFit"
 import {
   DEFAULT_LOOK,
   DRAG_TYPE,
+  countItems,
   decodePage,
   insertAt,
   itemProps,
@@ -17,9 +19,12 @@ import {
   moveTo,
   readDrag,
   removeAt,
+  slotsOf,
+  toEntries,
   type PageItem,
   type PageReport,
   type PageState,
+  type Path,
 } from "./playground/model"
 
 function isPreviewMessage(data: unknown): data is PreviewMessage {
@@ -33,18 +38,45 @@ const read = (search: string): PageState => {
   return { look: page.look ?? DEFAULT_LOOK, items: page.items ?? [], selected: page.selected }
 }
 
+const keyOf = (path: Path) => path.join(".")
+const pathOf = (key: string | undefined): number[] => (key ? key.split(".").map(Number) : [])
+
+/** Which way a list of pieces runs: down the page, or along a line that wraps (Row and Grid). */
+type Flow = "column" | "row"
+const FLOW: Record<string, Flow> = { row: "row", grid: "row" }
+
+/** The editing chrome. Plain CSS, because which tools show depends on what is hovered inside what: only the
+ *  innermost piece under the pointer shows its tools, so a layout piece's do not cover those of what it holds. */
+const CHROME = `
+[data-item] { position: relative; }
+[data-item][data-selected] { outline: 2px solid #0ea5e9; outline-offset: -2px; }
+[data-item-tools] { opacity: 0; transition: opacity .15s; }
+[data-item]:hover:not(:has([data-item]:hover)) > [data-tools-row] > [data-item-tools],
+[data-item][data-selected] > [data-tools-row] > [data-item-tools],
+[data-item-tools]:focus-within { opacity: 1; }
+[data-item][data-drop="before"] { box-shadow: 0 -4px 0 0 #0ea5e9; }
+[data-item][data-drop="after"] { box-shadow: 0 4px 0 0 #0ea5e9; }
+[data-flow="row"] > [data-item][data-drop="before"] { box-shadow: -4px 0 0 0 #0ea5e9; }
+[data-flow="row"] > [data-item][data-drop="after"] { box-shadow: 4px 0 0 0 #0ea5e9; }
+[data-slot] { min-height: 72px; }
+[data-slot][data-slot-column] { display: flex; flex-direction: column; gap: 16px; align-self: stretch; }
+[data-slot-empty] { flex: 1 1 auto; display: grid; place-items: center; min-height: 72px; min-width: 120px; margin: 0; padding: 12px; border: 1px dashed currentColor; border-radius: 8px; font: 13px/1.3 system-ui, sans-serif; text-align: center; opacity: .45; }
+[data-slot][data-slot-drop] > [data-slot-empty] { opacity: 1; border: 2px solid #0ea5e9; color: #0ea5e9; }
+`
+
 /**
  * The page inside the playground's frame: the chosen pieces, stacked top to bottom in one look, like a web page.
- * Pieces can be dragged here from the playground's tray and dragged up and down; each also has buttons to move and
- * remove it, for touch screens and keyboards. The playground that frames this page holds the state: every change
- * is reported to it, and it answers with the page to show.
+ * Pieces can be dragged here from the playground's tray, dragged to another place, and dropped into a layout piece
+ * (Columns, Row, Grid, Stack, Container) to sit inside it; each also has buttons to move and remove it, for touch
+ * screens and keyboards. The playground that frames this page holds the state: every change is reported to it, and
+ * it answers with the page to show.
  */
 export default function ClientPlaygroundPage() {
   const { search } = useLocation()
   const [state, setState] = useState<PageState>(() => read(search))
   const [replays, setReplays] = useState(0)
-  /** Where a dragged piece would land: before the item at this index (or at the end). */
-  const [dropAt, setDropAt] = useState<number | null>(null)
+  /** Where a dragged piece would land: before the item at this path (whose last index may be one past the end). */
+  const [dropAt, setDropAt] = useState<Path | null>(null)
   const root = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -69,52 +101,176 @@ export default function ClientPlaygroundPage() {
   }, [state.look])
 
   /** Shows the change at once, and tells the playground, which owns the page. */
-  const change = useCallback((items: PageItem[], selected: number | null) => {
+  const change = useCallback((items: PageItem[], selected: Path | null) => {
     setState((now) => ({ ...now, items, selected }))
     if (window.parent !== window) {
-      window.parent.postMessage({ type: "ds:page", items: items.map((item) => (item.p ? [item.id, item.p] : [item.id])), selected } satisfies PageReport, window.location.origin)
+      window.parent.postMessage({ type: "ds:page", items: toEntries(items), selected } satisfies PageReport, window.location.origin)
     }
   }, [])
 
   const { items, selected } = state
+  const selectedKey = selected ? keyOf(selected) : null
+  const dropKey = dropAt ? keyOf(dropAt) : null
 
-  const indexAt = (clientY: number) => {
-    const rows = Array.from(root.current?.querySelectorAll<HTMLElement>("[data-item]") ?? [])
+  /** Where a drop at this point would land: in the innermost slot under the pointer, else on the page itself;
+   *  before the first piece there whose middle the pointer has not passed. */
+  const targetAt = (event: DragEvent): Path => {
+    const slot = (event.target as HTMLElement).closest<HTMLElement>("[data-slot]")
+    const holder = slot ?? root.current
+    const list = pathOf(slot?.dataset.slot)
+    const rows = Array.from(holder?.children ?? []).filter((child) => child.matches("[data-item]"))
+    const along = slot?.dataset.flow === "row"
     const index = rows.findIndex((row) => {
       const box = row.getBoundingClientRect()
-      return clientY < box.top + box.height / 2
+      if (!along) return event.clientY < box.top + box.height / 2
+      return event.clientY < box.top || (event.clientY <= box.bottom && event.clientX < box.left + box.width / 2)
     })
-    return index === -1 ? rows.length : index
+    return [...list, index === -1 ? rows.length : index]
   }
 
   const onDragOver = (event: DragEvent) => {
     if (!event.dataTransfer.types.includes(DRAG_TYPE)) return
     event.preventDefault()
     event.dataTransfer.dropEffect = "move"
-    setDropAt(indexAt(event.clientY))
+    const at = targetAt(event)
+    if (keyOf(at) !== dropKey) setDropAt(at)
   }
 
   const onDrop = (event: DragEvent) => {
     const payload = readDrag(event.dataTransfer.getData(DRAG_TYPE))
-    const at = indexAt(event.clientY)
+    const at = targetAt(event)
     setDropAt(null)
     if (!payload) return
     event.preventDefault()
     if ("id" in payload) {
       const next = insertAt(items, at, { id: payload.id })
-      if (next.length > items.length) change(next, at)
-    } else if (payload.from < items.length) {
-      change(moveTo(items, payload.from, at), at > payload.from ? at - 1 : at)
+      if (countItems(next) > countItems(items)) change(next, at)
+    } else {
+      const moved = moveTo(items, payload.from, at)
+      change(moved.items, moved.at)
     }
   }
 
-  // A link inside a piece must not take the page away, and a click on a piece selects it.
-  const onClick = (event: MouseEvent, index: number) => {
+  // A link inside a piece must not take the page away, and a click on a piece selects it (the innermost one).
+  const onClick = (event: MouseEvent) => {
     const target = event.target as HTMLElement
     if (target.closest("[data-item-tools]")) return
     if (target.closest("a")) event.preventDefault()
-    if (selected !== index) change(items, index)
+    const key = target.closest<HTMLElement>("[data-item]")?.dataset.item
+    if (key && key !== selectedKey) change(items, pathOf(key))
   }
+
+  const renderList = (list: readonly PageItem[], listPath: Path, flow: Flow): ReactNode =>
+    list.map((item, index) => renderItem(item, [...listPath, index], flow, list.length))
+
+  /** What a slot holds: its pieces, or an invitation when it has none. */
+  const slotBody = (list: readonly PageItem[], listPath: Path, flow: Flow): ReactNode =>
+    list.length > 0 ? renderList(list, listPath, flow) : <p data-slot-empty="">Drop pieces here</p>
+
+  const slotProps = (list: readonly PageItem[], listPath: Path, flow: Flow) => ({
+    "data-slot": keyOf(listPath),
+    "data-flow": flow,
+    "data-slot-drop": list.length === 0 && dropKey === keyOf([...listPath, 0]) ? "" : undefined,
+  })
+
+  const renderItem = (item: PageItem, path: Path, flow: Flow, siblings: number): ReactNode => {
+    const meta = metaOf(item)
+    if (!meta) return null
+    const Piece = meta.component
+    const index = path.at(-1)!
+    const listPath = path.slice(0, -1)
+    const key = keyOf(path)
+    const nested = path.length > 1
+    const layout = meta.group === "layout"
+    const section = meta.group === "sections"
+    const props = itemProps(item)
+
+    let body: ReactNode
+    if (layout) {
+      const slots = slotsOf(item)
+      const inner =
+        item.id === "columns" ? (
+          <Piece {...props} key={replays}>
+            {slots.map((slot, s) => (
+              <div key={s} data-slot-column="" {...slotProps(slot, [...path, s], "column")}>
+                {slotBody(slot, [...path, s], "column")}
+              </div>
+            ))}
+          </Piece>
+        ) : (
+          <Piece {...props} key={replays} {...slotProps(slots[0] ?? [], [...path, 0], FLOW[item.id] ?? "column")}>
+            {slotBody(slots[0] ?? [], [...path, 0], FLOW[item.id] ?? "column")}
+          </Piece>
+        )
+      // On the page itself a layout piece gets the page's gutters and some air; a Container brings its own.
+      body = nested || item.id === "container" ? inner : <Container className="py-8">{inner}</Container>
+    } else if (nested) {
+      body = (
+        <PreviewFit width={meta.previewWidth}>
+          <Piece {...props} key={replays} />
+        </PreviewFit>
+      )
+    } else {
+      // Page sections run edge to edge; a small piece sits centred with room around it.
+      body = (
+        <div className={section ? undefined : "grid place-items-center px-6 py-10"} data-layout={meta.layout}>
+          <PreviewFit width={section ? undefined : meta.previewWidth}>
+            <Piece {...props} key={replays} />
+          </PreviewFit>
+        </div>
+      )
+    }
+
+    // In a line, a piece is as wide as its content; one with no width of its own is given a share of the line.
+    const wide = layout || section || meta.layout !== "centered"
+    const style: CSSProperties | undefined = flow !== "row" || !nested ? undefined : meta.previewWidth ? { flex: `0 1 ${meta.previewWidth}px` } : wide ? { flex: "1 1 240px" } : undefined
+
+    return (
+      <div
+        // An item keeps its place in the tree while its neighbours move, so only what moved is drawn again.
+        key={`${index}:${item.id}`}
+        data-item={key}
+        data-selected={selectedKey === key ? "" : undefined}
+        data-drop={dropKey === key ? "before" : index === siblings - 1 && dropKey === keyOf([...listPath, siblings]) ? "after" : undefined}
+        style={style}
+      >
+        {/* The tools ride along at the top of the screen while a tall piece scrolls under them. A layout piece's
+            sit on the left, out of the way of the tools of what it holds. */}
+        <div data-tools-row="" className={cn("pointer-events-none sticky top-0 z-50 flex h-0 pt-2", layout ? "justify-start pl-2" : "justify-end pr-2")}>
+          <div data-item-tools="" className="pointer-events-auto flex h-9 items-center gap-0.5 rounded-full bg-white p-1 font-sans text-zinc-700 shadow-md ring-1 ring-zinc-200">
+            <span
+              draggable
+              title="Drag to move"
+              className="grid size-7 cursor-grab place-items-center rounded-full hover:bg-zinc-100 active:cursor-grabbing"
+              onDragStart={(event) => {
+                event.stopPropagation()
+                event.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ from: path }))
+                event.dataTransfer.effectAllowed = "move"
+                const row = event.currentTarget.closest<HTMLElement>("[data-item]")
+                if (row) event.dataTransfer.setDragImage(row, 20, 20)
+              }}
+              onDragEnd={() => setDropAt(null)}
+            >
+              <GripVertical aria-hidden="true" className="size-4" />
+            </span>
+            {layout && <span className="px-1 text-xs font-medium">{meta.name}</span>}
+            <ToolButton label={`Move ${meta.name} up`} disabled={index === 0} onClick={() => moved(moveTo(items, path, [...listPath, index - 1]))}>
+              <ArrowUp aria-hidden="true" className="size-4" />
+            </ToolButton>
+            <ToolButton label={`Move ${meta.name} down`} disabled={index === siblings - 1} onClick={() => moved(moveTo(items, path, [...listPath, index + 2]))}>
+              <ArrowDown aria-hidden="true" className="size-4" />
+            </ToolButton>
+            <ToolButton label={`Remove ${meta.name}`} onClick={() => change(removeAt(items, path), null)}>
+              <Trash2 aria-hidden="true" className="size-4" />
+            </ToolButton>
+          </div>
+        </div>
+        {body}
+      </div>
+    )
+  }
+
+  const moved = (result: { items: PageItem[]; at: Path }) => change(result.items, result.at)
 
   return (
     <div
@@ -126,75 +282,15 @@ export default function ClientPlaygroundPage() {
       onDragLeave={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropAt(null)
       }}
+      onClickCapture={onClick}
     >
+      <style>{CHROME}</style>
       {items.length === 0 && (
         <p className="grid min-h-screen place-items-center px-6 text-center font-sans text-base opacity-60" data-empty="">
           Drag a piece here to start your page.
         </p>
       )}
-      {items.map((item, index) => {
-        const meta = metaOf(item)
-        if (!meta) return null
-        const Piece = meta.component
-        const section = meta.group === "sections"
-        return (
-          <div
-            // An item keeps its place in the tree while its neighbours move, so only what moved is drawn again.
-            key={`${index}:${item.id}`}
-            data-item={index}
-            data-selected={selected === index ? "" : undefined}
-            className={cn(
-              "group/item relative outline-offset-[-2px]",
-              selected === index && "outline outline-2 outline-sky-500",
-              dropAt === index && "shadow-[0_-4px_0_0_theme(colors.sky.500)]",
-              dropAt === items.length && index === items.length - 1 && "shadow-[0_4px_0_0_theme(colors.sky.500)]",
-            )}
-            onClickCapture={(event) => onClick(event, index)}
-          >
-            {/* The tools ride along at the top of the screen while a tall piece scrolls under them. */}
-            <div className="pointer-events-none sticky top-0 z-50 flex h-0 justify-end pr-2 pt-2">
-            <div
-              data-item-tools=""
-              className={cn(
-                "pointer-events-auto flex h-9 items-center gap-0.5 rounded-full bg-white p-1 font-sans text-zinc-700 shadow-md ring-1 ring-zinc-200",
-                "opacity-0 transition-opacity focus-within:opacity-100 group-hover/item:opacity-100",
-                selected === index && "opacity-100",
-              )}
-            >
-              <span
-                draggable
-                title="Drag to move"
-                className="grid size-7 cursor-grab place-items-center rounded-full hover:bg-zinc-100 active:cursor-grabbing"
-                onDragStart={(event) => {
-                  event.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ from: index }))
-                  event.dataTransfer.effectAllowed = "move"
-                  const row = event.currentTarget.closest<HTMLElement>("[data-item]")
-                  if (row) event.dataTransfer.setDragImage(row, 20, 20)
-                }}
-                onDragEnd={() => setDropAt(null)}
-              >
-                <GripVertical aria-hidden="true" className="size-4" />
-              </span>
-              <ToolButton label={`Move ${meta.name} up`} disabled={index === 0} onClick={() => change(moveTo(items, index, index - 1), index - 1)}>
-                <ArrowUp aria-hidden="true" className="size-4" />
-              </ToolButton>
-              <ToolButton label={`Move ${meta.name} down`} disabled={index === items.length - 1} onClick={() => change(moveTo(items, index, index + 2), index + 1)}>
-                <ArrowDown aria-hidden="true" className="size-4" />
-              </ToolButton>
-              <ToolButton label={`Remove ${meta.name}`} onClick={() => change(removeAt(items, index), null)}>
-                <Trash2 aria-hidden="true" className="size-4" />
-              </ToolButton>
-            </div>
-            </div>
-            {/* Page sections run edge to edge; a small piece sits centred with room around it. */}
-            <div className={section ? undefined : "grid place-items-center px-6 py-10"} data-layout={meta.layout}>
-              <PreviewFit width={section ? undefined : meta.previewWidth}>
-                <Piece {...itemProps(item)} key={replays} />
-              </PreviewFit>
-            </div>
-          </div>
-        )
-      })}
+      {renderList(items, [], "column")}
     </div>
   )
 }

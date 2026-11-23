@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import ClientPlayground from "./ClientPlayground"
 import ClientPlaygroundPage from "./ClientPlaygroundPage"
-import { DRAG_TYPE, decodePage, encodeItems, encodePage, starterPage, type PageItem } from "./playground/model"
+import { DRAG_TYPE, decodePage, encodeItems, encodePage, starterPage, type PageItem, type Path } from "./playground/model"
 import { LocationProbe, renderAt, stubRegistry, stubScrolling } from "./test-utils"
 
 beforeEach(() => {
@@ -69,7 +69,7 @@ describe("the playground", () => {
     const post = vi.spyOn(frame().contentWindow!, "postMessage")
     await userEvent.click(screen.getByRole("button", { name: "Add Button" }))
     expect(told(post).items).toEqual(page(["chips", "button"]))
-    expect(told(post).selected).toBe(1)
+    expect(told(post).selected).toEqual([1])
     expect(screen.getByRole("heading", { level: 2, name: "Button options" })).toBeInTheDocument()
     await waitFor(() => expect(pageInAddress()).toEqual(["chips", "button"]))
   })
@@ -77,7 +77,7 @@ describe("the playground", () => {
   it("editing the selected piece's options changes that piece only", async () => {
     renderPlayground(`/client/playground?page=${encodeItems(page(["button", "button"]))}`)
     const post = vi.spyOn(frame().contentWindow!, "postMessage")
-    report({ type: "ds:page", items: [["button"], ["button"]], selected: 1 })
+    report({ type: "ds:page", items: [["button"], ["button"]], selected: [1] })
     await userEvent.click(screen.getByRole("radio", { name: "outline" }))
     const items = told(post).items!
     expect(items[0]).toEqual({ id: "button" })
@@ -87,7 +87,7 @@ describe("the playground", () => {
   it("takes the arrangement the page inside the frame reports, from that frame only", async () => {
     renderPlayground(`/client/playground?page=${encodeItems(page(["chips", "button"]))}`)
     const post = vi.spyOn(frame().contentWindow!, "postMessage")
-    report({ type: "ds:page", items: [["button"], ["chips"], ["nope"]], selected: 0 })
+    report({ type: "ds:page", items: [["button"], ["chips"], ["nope"]], selected: [0] })
     expect(told(post).items).toEqual(page(["button", "chips"]))
     expect(screen.getByRole("heading", { level: 2, name: "Button options" })).toBeInTheDocument()
     for (const from of [{ source: window }, { source: null }, { origin: "https://example.com" }]) {
@@ -119,7 +119,7 @@ describe("the playground", () => {
 })
 
 describe("the page inside the playground's frame", () => {
-  const renderPage = (items: PageItem[], selected: number | null = null) =>
+  const renderPage = (items: PageItem[], selected: Path | null = null) =>
     render(
       <MemoryRouter initialEntries={[`/client/preview/playground?${encodePage({ look: "urlovematters", items, selected })}`]}>
         <ClientPlaygroundPage />
@@ -178,11 +178,69 @@ describe("the page inside the playground's frame", () => {
     }
     drop({ id: "eyebrow" }, 10)
     expect(order()).toEqual(["ds-chips", "ds-button", "ds-eyebrow"])
-    drop({ from: 2 }, -10)
+    drop({ from: [2] }, -10)
     expect(order()).toEqual(["ds-eyebrow", "ds-chips", "ds-button"])
     drop({ id: "nope" }, 10)
-    drop({ from: 99 }, 10)
+    drop({ from: [99] }, 10)
     expect(order()).toEqual(["ds-eyebrow", "ds-chips", "ds-button"])
+  })
+
+  describe("with layout pieces", () => {
+    const nested: PageItem[] = [{ id: "chips" }, { id: "columns", c: [[{ id: "button" }], []] }]
+    const dropOn = (target: Element, payload: object, clientY = 10) => {
+      const dataTransfer = { types: [DRAG_TYPE], getData: () => JSON.stringify(payload), dropEffect: "none" }
+      for (const make of [createEvent.dragOver, createEvent.drop]) {
+        const event = make(target, { dataTransfer })
+        Object.defineProperty(event, "clientY", { value: clientY })
+        fireEvent(target, event)
+      }
+    }
+    const slot = (key: string) => document.querySelector(`[data-slot="${key}"]`)!
+    const inSlot = (key: string) => Array.from(slot(key).children).filter((child) => child.matches("[data-item]")).map((row) => row.querySelector("[class^='ds-']")?.className.split(" ")[0])
+
+    it("draws a Columns with a slot per column, its pieces inside, and an invitation in an empty one", () => {
+      renderPage(nested)
+      expect(document.querySelectorAll(".ds-columns__grid > [data-slot]")).toHaveLength(2)
+      expect(inSlot("1.0")).toEqual(["ds-button"])
+      expect(slot("1.1")).toHaveTextContent("Drop pieces here")
+      expect(rows().map((row) => row.dataset.item)).toEqual(["0", "1", "1.0.0"])
+    })
+
+    it("a piece dropped on a slot goes into it; one dragged from the page moves in, and out again", () => {
+      renderPage(nested)
+      dropOn(slot("1.1"), { id: "eyebrow" })
+      expect(inSlot("1.1")).toEqual(["ds-eyebrow"])
+      dropOn(slot("1.0"), { from: [0] }, -10) // the chips, from the page to the top of the first column
+      expect(rows().map((row) => row.dataset.item)).toEqual(["0", "0.0.0", "0.0.1", "0.1.0"])
+      expect(inSlot("0.0")).toEqual(["ds-chips", "ds-button"])
+      expect(document.querySelector('[data-item="0.0.0"]')).toHaveAttribute("data-selected")
+      dropOn(document.querySelector(".ds-root")!, { from: [0, 1, 0] }) // the eyebrow, out to the end of the page
+      expect(slot("0.1")).toHaveTextContent("Drop pieces here")
+      expect(rows().at(-1)?.dataset.item).toBe("1")
+    })
+
+    it("a Row holds its pieces as its own children, and a layout piece dropped into itself stays put", () => {
+      renderPage([{ id: "row", c: [[{ id: "button" }, { id: "text-link" }]] }])
+      const row = document.querySelector(".ds-row")!
+      expect(row).toHaveAttribute("data-slot", "0.0")
+      expect(row).toHaveAttribute("data-flow", "row")
+      expect(Array.from(row.children).every((child) => child.matches("[data-item]"))).toBe(true)
+      dropOn(row, { from: [0] })
+      expect(rows().map((r) => r.dataset.item)).toEqual(["0", "0.0.0", "0.0.1"])
+    })
+
+    it("a click selects the innermost piece, and the buttons move a piece within its own slot", async () => {
+      renderPage([{ id: "stack", c: [[{ id: "button" }, { id: "chips" }]] }])
+      await userEvent.click(document.querySelector(".ds-chips")!)
+      expect(document.querySelector('[data-item="0.0.1"]')).toHaveAttribute("data-selected")
+      expect(document.querySelector('[data-item="0"]')).not.toHaveAttribute("data-selected")
+      expect(screen.getByRole("button", { name: "Move Stack up" })).toBeDisabled()
+      expect(screen.getByRole("button", { name: "Move Stack down" })).toBeDisabled()
+      await userEvent.click(screen.getByRole("button", { name: "Move Chips up" }))
+      expect(inSlot("0.0")).toEqual(["ds-chips", "ds-button"])
+      await userEvent.click(screen.getByRole("button", { name: "Remove Stack" }))
+      expect(screen.getByText("Drag a piece here to start your page.")).toBeInTheDocument()
+    })
   })
 
   it("ignores a drag that is not a piece", () => {
@@ -198,7 +256,7 @@ describe("the page inside the playground's frame", () => {
     renderPage(page(["chips"]))
     const send = (source: unknown, origin = window.location.origin) =>
       act(() => {
-        window.dispatchEvent(new MessageEvent("message", { data: { type: "ds:state", search: encodePage({ look: "neutral", items: page(["button"]), selected: 0 }) }, source: source as Window, origin }))
+        window.dispatchEvent(new MessageEvent("message", { data: { type: "ds:state", search: encodePage({ look: "neutral", items: page(["button"]), selected: [0] }) }, source: source as Window, origin }))
       })
     send(window.parent, "https://example.com")
     send(null)

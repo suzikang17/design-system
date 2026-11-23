@@ -22,7 +22,7 @@ describe('client pieces on React 18', () => {
   })
 
   const renderQuietly = (m: ComponentMeta<object>, props: object) => {
-    const Component = m.component
+    const Component = m.demo ?? m.component
     const { container, unmount } = render(
       <StrictMode>
         <Component {...props} />
@@ -38,8 +38,8 @@ describe('client pieces on React 18', () => {
     expect(version).toMatch(/^18\./)
   })
 
-  it('finds all seventeen pieces', () => {
-    expect(allMeta).toHaveLength(17)
+  it('finds all twenty-two pieces', () => {
+    expect(allMeta).toHaveLength(22)
   })
 
   it.each(allMeta.map((m) => [m.id, m] as const))('%s with its defaults', (_id, m) => {

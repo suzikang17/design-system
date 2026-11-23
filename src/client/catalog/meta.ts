@@ -8,7 +8,7 @@ export type Control =
   | { type: 'number'; label: string; min: number; max: number; step?: number }
   | { type: 'list'; label: string } // string[]
 
-export type Group = 'primitives' | 'motion' | 'sections' | 'galleries' | 'set-pieces'
+export type Group = 'primitives' | 'layout' | 'motion' | 'sections' | 'galleries' | 'set-pieces'
 export type Origin = 'wecuratelife' | 'urlovematters'
 
 export interface ComponentMeta<P extends object> {
@@ -23,6 +23,9 @@ export interface ComponentMeta<P extends object> {
   /** one sentence */
   summary: string
   component: ComponentType<P>
+  /** catalog only: what the previews draw in place of `component`, for a piece that only arranges its children
+   *  and so shows nothing by itself (the layout pieces). It takes the same props */
+  demo?: ComponentType<P>
   defaults: P
   controls: Partial<Record<keyof P, Control>>
   layout: 'centered' | 'full' | 'scroll'

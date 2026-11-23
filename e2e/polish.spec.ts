@@ -153,6 +153,56 @@ test.describe("the playground", () => {
     await expect(frame.locator(".ds-button")).toHaveText("Book a call")
   })
 
+  test("pieces are dropped into a Columns and a Row, dragged between them, and the columns stack on a phone", async ({ page }, info) => {
+    test.skip(info.project.name === "phone", "dragging with a mouse; the stacking is checked below at phone size")
+    const start = [["columns", "", [[["eyebrow"], ["button"]], []]], ["row", "", [[["button"], ["text-link"]]]]]
+    await page.goto(`client/playground?page=${b64(start)}`)
+    const frame = page.frameLocator('iframe[title="Your page"]')
+    const inAddress = () => JSON.parse(Buffer.from(new URL(page.url()).searchParams.get("page") ?? "", "base64url").toString() || "null")
+    await expect(frame.locator('[data-slot="0.1"]')).toHaveText("Drop pieces here")
+
+    // from the tray into the empty column
+    await page.getByRole("button", { name: "Add Chips" }).dragTo(frame.locator('[data-slot="0.1"]'))
+    await expect(frame.locator('[data-slot="0.1"] .ds-chips')).toBeVisible()
+
+    // from one column into the row, before the link
+    await frame.locator('[data-item="0.0.1"]').hover()
+    await frame.locator('[data-item="0.0.1"] > [data-tools-row] [title="Drag to move"]').dragTo(frame.locator('[data-item="1.0.1"]'), { targetPosition: { x: 4, y: 10 } })
+    await expect.poll(inAddress).toEqual([["columns", "", [[["eyebrow"]], [["chips"]]]], ["row", "", [[["button"], ["button"], ["text-link"]]]]])
+
+    // side by side on a wide screen: the two columns share a top edge
+    const tops = () => frame.locator(".ds-columns__grid > [data-slot]").evaluateAll((slots) => slots.map((slot) => Math.round(slot.getBoundingClientRect().top)))
+    expect(new Set(await tops()).size).toBe(1)
+    const row = await frame.locator(".ds-row > [data-item]").evaluateAll((items) => items.map((item) => Math.round(item.getBoundingClientRect().left)))
+    expect(row[0]!).toBeLessThan(row[1]!)
+    expect(row[1]!).toBeLessThan(row[2]!)
+
+    // one under the other inside the phone
+    await page.getByRole("button", { name: "Phone", exact: true }).click()
+    await expect.poll(async () => new Set(await tops()).size).toBe(2)
+
+    // the link reopens it, nesting and all
+    await page.reload()
+    await expect(frame.locator('[data-slot="0.1"] .ds-chips')).toBeVisible()
+    await expect(frame.locator(".ds-row > [data-item]")).toHaveCount(3)
+  })
+
+  test("a Columns' options change how many columns it has, without losing what was in them", async ({ page }) => {
+    const start = [["columns", "", [[["button"]], [["chips"]]]]]
+    await page.goto(`client/playground?page=${b64(start)}`)
+    const frame = page.frameLocator('iframe[title="Your page"]')
+    await frame.locator('[data-item="0"]').click({ position: { x: 4, y: 4 } })
+    await expect(page.getByRole("heading", { name: "Columns options" })).toBeVisible()
+    await page.getByRole("combobox", { name: "Split" }).click()
+    await page.getByRole("option", { name: "1/1/1", exact: true }).click()
+    await expect(frame.locator(".ds-columns__grid > [data-slot]")).toHaveCount(3)
+    await expect(frame.locator('[data-slot="0.2"]')).toHaveText("Drop pieces here")
+    await expect(frame.locator('[data-slot="0.0"] .ds-button')).toBeVisible()
+    await expect(frame.locator('[data-slot="0.1"] .ds-chips')).toBeVisible()
+    const overflow = await frame.locator("body").evaluate(() => ({ s: document.documentElement.scrollWidth, w: window.innerWidth }))
+    expect(overflow.s).toBeLessThanOrEqual(overflow.w)
+  })
+
   test("the client picker restyles the whole page", async ({ page }, info) => {
     test.skip(info.project.name === "phone", "the side nav is behind a menu on phones; the picker itself is tested in unit tests")
     await page.goto(`client/playground?page=${b64([["button"]])}`)

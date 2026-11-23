@@ -27,12 +27,36 @@ the reference.
 - Plain CSS and custom properties, not Tailwind, on purpose: the pieces are copied into projects that may not run
   Tailwind. A piece is styled by an ancestor with class `ds-root` and `data-theme="<look>"`.
 
+## Layout pieces
+
+Container, Stack, Row, Columns and Grid (group `layout`) only arrange their children. They take `children`, pass
+other attributes and `className` to their element, have no look of their own (`origin: []`, `homeTheme: 'neutral'`)
+and share one spacing scale for `gap`: none, xs 8px, sm 16px, md 24px, lg 40px, xl 64px. Each piece defines the
+scale in its own CSS, because pieces are copied out one at a time.
+
+- Container caps the width (1180px for `page`, the same as the sections) inside `--ds-gutter`. A new section uses
+  the same cap and gutters so it lines up with content in a Container.
+- Columns and Grid follow their own width (container queries, `auto-fill`), never the screen's, so they behave
+  inside a narrow slot. Columns takes any split as shares: `split="5/7"`.
+- A layout piece shows nothing by itself, so its meta has `demo`: `withBlocks(Piece, count)` from
+  `src/client/catalog/LayoutDemo.tsx`, which the previews and cards draw in place of `component`. `demo` is catalog
+  only and does not ship.
+
+## Playground
+
+`/client/playground` arranges pieces on a page drawn inside the device frame (`src/site/client/playground/model.ts`
+holds the page model, `ClientPlaygroundPage.tsx` is the page inside the frame). A page is a list of items; an item of
+a layout piece holds lists of items, one per slot (one per column for Columns, one for the others). A place is a
+path: `[index]` on the page, `[index, slot, index]` inside a layout piece. Layout pieces nest two deep and a page
+holds 24 pieces in all, whatever a link says. A new layout piece is droppable in the playground without further
+work; a layout piece with more than one slot needs a case in `slotCount` and in the page's `renderItem`.
+
 ## Layout of `src/client/`
 
 - `components/<id>/` the pieces.
 - `tokens/` the token contract (`contract.ts`), `base.css` and the looks (`themes/<id>.css`).
 - `hooks/` the two hooks the pieces share, `useInView` and `useReducedMotion`.
-- `catalog/` the meta model, the registry of metas and the state of a shareable link. The catalog pages in
+- `catalog/` the meta model, the registry of metas, the state of a shareable link and the layout pieces' demos. The catalog pages in
   `src/site/client/` read these.
 
 ## Tokens and looks

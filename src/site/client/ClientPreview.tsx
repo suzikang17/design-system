@@ -80,7 +80,7 @@ function PreviewBody({ meta }: { meta: ComponentMeta<any> }) {
     return () => observer.disconnect()
   }, [meta.layout, replays])
 
-  const Piece = meta.component
+  const Piece = meta.demo ?? meta.component
   return (
     <div ref={root} className={cn("ds-root min-h-screen", LAYOUT_CLASS[meta.layout])} data-theme={state.theme} data-layout={meta.layout}>
       <PreviewFit width={meta.previewWidth}>

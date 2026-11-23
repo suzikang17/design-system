@@ -30,7 +30,7 @@ pnpm new <name>     # scaffold a component and its showcase
 
 ## Client work
 
-Ten plain-CSS pieces ported from client sites live in `src/client/`, apart from the Tailwind components: `components/<id>/` for the pieces, `tokens/` for the token contract, `base.css` and the three looks, `hooks/` for the shared hooks, `catalog/` for the metas and link state. The site shows them under `/client`, and the registry publishes them as `client-<id>`, `client-base` and `client-look-<id>`. `docs/CONVENTIONS.md` has the rules.
+Plain-CSS pieces ported from client sites, and the layout pieces that arrange them, live in `src/client/`, apart from the Tailwind components: `components/<id>/` for the pieces, `tokens/` for the token contract, `base.css` and the three looks, `hooks/` for the shared hooks, `catalog/` for the metas and link state. The site shows them under `/client`, and the registry publishes them as `client-<id>`, `client-base` and `client-look-<id>`. `docs/CONVENTIONS.md` has the rules.
 
 ### Add a client piece
 

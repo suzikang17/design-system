@@ -7,6 +7,7 @@ export type AnyMeta = ComponentMeta<any>
 
 export const GROUPS: readonly { id: Group; label: string }[] = [
   { id: 'primitives', label: 'Primitives' },
+  { id: 'layout', label: 'Layout' },
   { id: 'motion', label: 'Motion' },
   { id: 'sections', label: 'Sections' },
   { id: 'galleries', label: 'Galleries' },

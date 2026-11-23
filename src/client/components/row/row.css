@@ -1,0 +1,25 @@
+/* Row: children side by side at their own widths, wrapping when they run out of room. */
+.ds-row {
+  --_ds-row-gap: 16px;
+
+  display: flex;
+  flex-flow: row wrap;
+  gap: var(--_ds-row-gap);
+  min-inline-size: 0;
+}
+.ds-row > * { min-inline-size: 0; }
+.ds-row--nowrap { flex-wrap: nowrap; }
+.ds-row--gap-none { --_ds-row-gap: 0px; }
+.ds-row--gap-xs { --_ds-row-gap: 8px; }
+.ds-row--gap-md { --_ds-row-gap: 24px; }
+.ds-row--gap-lg { --_ds-row-gap: 40px; }
+.ds-row--gap-xl { --_ds-row-gap: 64px; }
+.ds-row--align-start { align-items: flex-start; }
+.ds-row--align-center { align-items: center; }
+.ds-row--align-end { align-items: flex-end; }
+.ds-row--align-stretch { align-items: stretch; }
+.ds-row--align-baseline { align-items: baseline; }
+.ds-row--justify-start { justify-content: flex-start; }
+.ds-row--justify-center { justify-content: center; }
+.ds-row--justify-end { justify-content: flex-end; }
+.ds-row--justify-between { justify-content: space-between; }

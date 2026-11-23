@@ -15,17 +15,21 @@ import {
   DRAG_TYPE,
   MAX_ITEMS,
   cleanItems,
+  countItems,
   decodePage,
   encodeItems,
   encodePage,
+  getAt,
   insertAt,
   isPageReport,
   itemProps,
   metaOf,
+  replaceAt,
   starterPage,
   trayPieces,
   withProps,
   type PageItem,
+  type Path,
 } from "./playground/model"
 
 /** Quiet time after the last change before the address is written (see ClientPiece). */
@@ -34,7 +38,7 @@ const FRAME_TITLE = "Your page"
 
 /**
  * A page to arrange: pieces are dragged from the tray onto a page drawn inside a monitor, tablet or phone, moved
- * up and down, and edited. The page is drawn in the look of the client picked in the side nav. The arrangement
+ * up and down, dropped into layout pieces (columns, rows, grids) to sit side by side, and edited. The page is drawn in the look of the client picked in the side nav. The arrangement
  * lives in the address, so a link to it can be sent to someone.
  */
 export default function ClientPlayground() {
@@ -46,7 +50,7 @@ export default function ClientPlayground() {
 
   // A link that carries a page opens it; otherwise the visitor starts from a whole small site.
   const [items, setItems] = useState<PageItem[]>(() => decodePage(location.search).items ?? starterPage(look))
-  const [selected, setSelected] = useState<number | null>(null)
+  const [selected, setSelected] = useState<Path | null>(null)
   const [size, setSize] = useState<PreviewSize>("desktop")
   const [copied, setCopied] = useState(false)
   const search = encodePage({ look, items, selected })
@@ -69,7 +73,7 @@ export default function ClientPlayground() {
       if (!isPageReport(event.data)) return
       const next = cleanItems(event.data.items)
       setItems(next)
-      setSelected(event.data.selected !== null && event.data.selected >= 0 && event.data.selected < next.length ? event.data.selected : null)
+      setSelected(event.data.selected !== null && getAt(next, event.data.selected) ? event.data.selected : null)
     }
     window.addEventListener("message", onMessage)
     return () => window.removeEventListener("message", onMessage)
@@ -88,9 +92,10 @@ export default function ClientPlayground() {
   }, [share])
 
   const add = (id: string) => {
-    if (items.length >= MAX_ITEMS) return
-    setItems(insertAt(items, items.length, { id }))
-    setSelected(items.length)
+    const next = insertAt(items, [items.length], { id })
+    if (next.length === items.length) return
+    setItems(next)
+    setSelected([items.length])
   }
 
   const copyLink = async () => {
@@ -105,10 +110,10 @@ export default function ClientPlayground() {
   }
 
   const tray = useMemo(() => trayPieces(), [])
-  const current = selected !== null ? items[selected] : undefined
+  const current = selected !== null ? getAt(items, selected) : undefined
   const currentMeta = current ? metaOf(current) : undefined
   const lookLabel = THEMES.find((theme) => theme.id === look)?.label
-  const full = items.length >= MAX_ITEMS
+  const full = countItems(items) >= MAX_ITEMS
 
   return (
     <div data-ready="">
@@ -145,7 +150,7 @@ export default function ClientPlayground() {
         </div>
       </div>
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-        Drag pieces onto the page and move them around to try a layout.
+        Drag pieces onto the page and move them around to try a layout. Columns, Row, Grid and Stack hold other pieces: drop them inside to sit side by side.
         {choice === "all" && <> Shown in the {lookLabel} look: pick a client on the left to change it.</>}
       </p>
 
@@ -199,10 +204,10 @@ export default function ClientPlayground() {
           {current && currentMeta ? (
             <Controls
               // A new selection starts its fields from that piece's values.
-              key={`${selected}:${current.id}`}
+              key={`${selected?.join(".")}:${current.id}`}
               meta={currentMeta}
               props={itemProps(current)}
-              onChange={(props) => setItems(items.map((item, index) => (index === selected ? withProps(item, props) : item)))}
+              onChange={(props) => selected && setItems(replaceAt(items, selected, withProps(current, props)))}
             />
           ) : (
             <p className="text-sm text-muted-foreground">Click a piece on the page to change its words and options.</p>
