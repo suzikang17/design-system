@@ -16,3 +16,4 @@ e2e/proof/
 test-results/
 playwright-report/
 .wrangler/
+e2e/ids.json

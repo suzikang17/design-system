@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router-dom"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import input from "@/client/components/input/input.meta"
+import { MAX_FRAME_HEIGHT, frameHeight, isPreviewReport } from "./frameHeight"
 import { PreviewFrame } from "./PreviewFrame"
 import type { PreviewSize } from "./SizeSwitch"
 
@@ -72,5 +73,55 @@ describe("PreviewFrame", () => {
       frame().dispatchEvent(new Event("load"))
     })
     expect(post).toHaveBeenCalledWith({ type: "ds:state", search: "look=wecuratelife" }, window.location.origin)
+  })
+})
+
+describe("the frame follows the height the piece reports", () => {
+  const report = (data: unknown, init: { source?: MessageEventSource | null; origin?: string } = {}) =>
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data,
+          source: init.source === undefined ? frame().contentWindow : init.source,
+          origin: init.origin ?? window.location.origin,
+        }),
+      )
+    })
+
+  it("grows to a tall piece and shrinks back to the minimum for a short one", () => {
+    observeWidth(2000)
+    renderFrame("desktop")
+    expect(frame().style.height).toBe("420px")
+    report({ type: "ds:height", height: 733.2 })
+    expect(frame().style.height).toBe("734px")
+    report({ type: "ds:height", height: 200 })
+    expect(frame().style.height).toBe("420px")
+  })
+
+  it("never grows past the maximum", () => {
+    renderFrame("desktop")
+    report({ type: "ds:height", height: 99999 })
+    expect(frame().style.height).toBe(`${MAX_FRAME_HEIGHT}px`)
+  })
+
+  it("ignores a report from another window, another origin, or a malformed one", () => {
+    renderFrame("desktop")
+    report({ type: "ds:height", height: 800 }, { source: window })
+    report({ type: "ds:height", height: 800 }, { source: null })
+    report({ type: "ds:height", height: 800 }, { origin: "https://example.com" })
+    for (const data of [{ type: "ds:height", height: "800" }, { type: "ds:height", height: Infinity }, { type: "ds:height", height: -5 }, { type: "other", height: 800 }, null, "ds:height"]) {
+      report(data)
+    }
+    expect(frame().style.height).toBe("420px")
+  })
+
+  it("frameHeight keeps the minimum, drawn at the scale, and caps the report", () => {
+    expect(frameHeight(420, 1, null)).toBe(420)
+    expect(frameHeight(420, 0.5, null)).toBe(840)
+    expect(frameHeight(420, 0.5, 500)).toBe(840)
+    expect(frameHeight(420, 0.5, 900.1)).toBe(901)
+    expect(frameHeight(420, 1, 5000)).toBe(MAX_FRAME_HEIGHT)
+    expect(isPreviewReport({ type: "ds:height", height: 10 })).toBe(true)
+    expect(isPreviewReport({ type: "ds:height", height: NaN })).toBe(false)
   })
 })

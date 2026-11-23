@@ -8,6 +8,7 @@ import { getMeta } from "@/client/catalog/registry"
 import { decodeState, type PreviewState } from "@/client/catalog/state"
 import { cn } from "@/lib/utils"
 import ClientNotFound from "./ClientNotFound"
+import type { PreviewReport } from "./parts/frameHeight"
 import type { PreviewMessage } from "./parts/PreviewFrame"
 import { PreviewFit } from "./parts/PreviewFit"
 
@@ -60,6 +61,24 @@ function PreviewBody({ meta }: { meta: ComponentMeta<any> }) {
       body.style.backgroundColor = ""
     }
   }, [state.theme])
+
+  // Tell the page framing this one how tall the piece is (with the root's padding), so the frame can show it whole.
+  // Not for `scroll`, whose height is the frame's own. A page opened on its own has no one to tell.
+  useEffect(() => {
+    const element = root.current
+    if (!element || meta.layout === "scroll" || window.parent === window || typeof ResizeObserver === "undefined") return
+    const report = () => {
+      const piece = element.firstElementChild
+      if (!piece) return
+      const style = getComputedStyle(element)
+      const height = piece.getBoundingClientRect().height + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
+      window.parent.postMessage({ type: "ds:height", height } satisfies PreviewReport, window.location.origin)
+    }
+    const observer = new ResizeObserver(report)
+    if (element.firstElementChild) observer.observe(element.firstElementChild)
+    report()
+    return () => observer.disconnect()
+  }, [meta.layout, replays])
 
   const Piece = meta.component
   return (

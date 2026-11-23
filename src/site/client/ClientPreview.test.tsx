@@ -1,6 +1,6 @@
 import { act, render, screen } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { App } from "../App"
 import "./test-utils" // the longer wait for lazy pages
@@ -115,5 +115,21 @@ describe("the bare preview of a piece", () => {
   it("falls back to the home look and defaults for an unusable address", async () => {
     await openPreview("/client/preview/button?look=bogus&p=%%%")
     expect(root()).toHaveAttribute("data-theme", "urlovematters")
+  })
+})
+
+describe("telling the framing page how tall the piece is", () => {
+  it("posts the piece's height, with the root's padding, to its parent at its own origin", async () => {
+    const parent = { postMessage: vi.fn() }
+    const original = Object.getOwnPropertyDescriptor(window, "parent")
+    Object.defineProperty(window, "parent", { value: parent, configurable: true })
+    vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} })
+    try {
+      await openPreview("/client/preview/button?look=wecuratelife")
+      expect(parent.postMessage).toHaveBeenCalledWith({ type: "ds:height", height: expect.any(Number) }, window.location.origin)
+    } finally {
+      vi.unstubAllGlobals()
+      if (original) Object.defineProperty(window, "parent", original)
+    }
   })
 })

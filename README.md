@@ -16,10 +16,19 @@ pnpm registry       # registry.json (gen:registry), then public/r/*.json (build:
 pnpm test           # vitest
 pnpm typecheck
 pnpm lint
+pnpm e2e            # browser checks (Playwright) against a production build on port 4317
+pnpm e2e:compare    # the 72 before-and-after screenshots of the client pieces (see Browser checks)
+pnpm verify         # typecheck, lint, unit tests, then the browser checks
 pnpm gen:registry   # registry.json only
 pnpm build:registry # public/r/*.json from registry.json (shadcn build)
 pnpm new <name>     # scaffold a component and its showcase
 ```
+
+## Browser checks
+
+`pnpm e2e` builds the site, serves it on port 4317 and runs the Playwright suites in `e2e/` at 1280x800 and 390x844: every page type loads without console errors or sideways overflow, the client pieces render in all three looks, and rendered details (heights, paddings, reduced motion, focus) are measured. The first time on a machine, install the browser: `pnpm exec playwright install --with-deps chromium`.
+
+`e2e/compare-shots.mjs` (`pnpm e2e:compare`, with the site served on port 4317) takes screenshots of the client pieces from this site and compares them with reference screenshots from the standalone build, which are kept outside the repo (`.superpowers/ref/plan1-shots`, or set `REF_DIR`). It allows a difference of 2 in each colour channel, reports the share of differing pixels per shot, writes diff images to `e2e/shots/compare/`, and fails when a shot differs by more than 1% of its pixels.
 
 ## Add a component
 

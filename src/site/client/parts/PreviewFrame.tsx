@@ -4,6 +4,7 @@ import { RotateCcw } from "lucide-react"
 
 import type { ComponentMeta } from "@/client/catalog/meta"
 import { PillButton } from "@/components/ui/pill"
+import { frameHeight, isPreviewReport } from "./frameHeight"
 import type { PreviewSize } from "./SizeSwitch"
 
 const SIZE_WIDTH: Record<PreviewSize, string> = { desktop: "100%", tablet: "768px", phone: "390px" }
@@ -43,6 +44,18 @@ export function PreviewFrame({ meta, search, size, children }: PreviewFrameProps
     frame.current?.contentWindow?.postMessage({ type: "ds:state", search } satisfies PreviewMessage, window.location.origin)
   }, [search])
 
+  // The piece reports its height, so a tall one (a photo) is shown whole. Only the frame this page made, from this
+  // origin, is believed, exactly as the preview believes only its parent.
+  const [reported, setReported] = useState<number | null>(null)
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== frame.current?.contentWindow || event.origin !== window.location.origin) return
+      if (isPreviewReport(event.data)) setReported(event.data.height)
+    }
+    window.addEventListener("message", onMessage)
+    return () => window.removeEventListener("message", onMessage)
+  }, [])
+
   const viewport = useRef<HTMLDivElement>(null)
   const [available, setAvailable] = useState<number | null>(null)
   useLayoutEffect(() => {
@@ -53,14 +66,14 @@ export function PreviewFrame({ meta, search, size, children }: PreviewFrameProps
     return () => observer.disconnect()
   }, [])
 
-  const height = LAYOUT_HEIGHT[meta.layout]
   const px = SIZE_PX[size]
   const scale = px && available && available < px ? available / px : 1
+  const height = frameHeight(LAYOUT_HEIGHT[meta.layout], scale, meta.layout === "scroll" ? null : reported)
 
   return (
     <div className="overflow-hidden rounded-xl border bg-card">
       <div className="bg-muted/40 bg-[radial-gradient(hsl(var(--border))_1px,transparent_1px)] p-2 [background-size:16px_16px] sm:p-4">
-        <div ref={viewport} className="flex justify-center overflow-hidden" style={{ height }}>
+        <div ref={viewport} className="flex justify-center overflow-hidden" style={{ height: height * scale }}>
           <iframe
             ref={frame}
             title={`${meta.name} preview`}
@@ -68,7 +81,7 @@ export function PreviewFrame({ meta, search, size, children }: PreviewFrameProps
             className="block max-w-none flex-none origin-top rounded-md shadow-sm ring-1 ring-foreground/10 motion-safe:transition-[width] motion-safe:duration-300"
             style={{
               width: SIZE_WIDTH[size],
-              height: height / scale,
+              height,
               transform: scale < 1 ? `scale(${scale})` : undefined,
             }}
             // Catch up on anything changed while the frame was still loading.
