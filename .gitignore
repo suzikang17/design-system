@@ -1,8 +1,11 @@
 node_modules/
 dist/
 public/r/
+registry.json
 .env
 .env.*
 !.env.example
 .DS_Store
 *.log
+.claude/qa-runs/
+.playwright-cli/

@@ -1,0 +1,32 @@
+/* Ember: light, warm ash neutrals with an ember-red primary and an amber accent. */
+[data-theme="ember"] {
+  color-scheme: light;
+
+  --background: 30 14% 97%;
+  --foreground: 20 14% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 20 14% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 20 14% 11%;
+  --primary: 12 84% 39%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 30 12% 92%;
+  --secondary-foreground: 20 14% 11%;
+  --muted: 30 12% 93%;
+  --muted-foreground: 20 8% 36%;
+  --accent: 40 100% 89%;
+  --accent-foreground: 28 80% 20%;
+  --destructive: 350 78% 38%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 30 12% 88%;
+  --input: 30 10% 80%;
+  --ring: 12 84% 39%;
+  --radius: 0.75rem;
+
+  --sidebar: 30 14% 99%;
+  --sidebar-foreground: 20 14% 11%;
+  --sidebar-border: 30 12% 88%;
+  --sidebar-ring: 12 84% 39%;
+  --sidebar-accent: 30 12% 93%;
+  --sidebar-accent-foreground: 20 14% 11%;
+}

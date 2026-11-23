@@ -1,0 +1,32 @@
+/* Midnight: the dark version of Sky. */
+[data-theme="midnight"] {
+  color-scheme: dark;
+
+  --background: 222 47% 7%;
+  --foreground: 210 40% 96%;
+  --card: 222 44% 10%;
+  --card-foreground: 210 40% 96%;
+  --popover: 222 44% 11%;
+  --popover-foreground: 210 40% 96%;
+  --primary: 199 89% 62%;
+  --primary-foreground: 222 47% 9%;
+  --secondary: 217 33% 17%;
+  --secondary-foreground: 210 40% 96%;
+  --muted: 217 33% 15%;
+  --muted-foreground: 215 20% 70%;
+  --accent: 217 33% 19%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 84% 64%;
+  --destructive-foreground: 0 0% 8%;
+  --border: 217 33% 18%;
+  --input: 217 30% 26%;
+  --ring: 199 89% 62%;
+  --radius: 0.5rem;
+
+  --sidebar: 222 47% 6%;
+  --sidebar-foreground: 210 40% 96%;
+  --sidebar-border: 217 33% 15%;
+  --sidebar-ring: 199 89% 62%;
+  --sidebar-accent: 217 33% 15%;
+  --sidebar-accent-foreground: 210 40% 96%;
+}
