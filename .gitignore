@@ -15,3 +15,4 @@ e2e/fidelity/
 e2e/proof/
 test-results/
 playwright-report/
+.wrangler/
