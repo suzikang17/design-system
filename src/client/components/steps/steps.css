@@ -1,0 +1,85 @@
+/* Steps: a "how it works" section. A heading, then a short numbered sequence: three columns when there is room,
+   one column below. Sizes follow the piece's own width. */
+.ds-steps {
+  --_ds-steps-gap: clamp(24px, 4cqi, 34px);
+  --_ds-steps-max: 1180px;
+  --_ds-steps-min: 220px; /* a column never gets narrower than this */
+  --_ds-steps-rise: 14px;
+  --_ds-steps-stagger: 0.12s;
+  --_ds-steps-num: clamp(2rem, 4cqi, 2.4rem);
+
+  box-sizing: border-box;
+  container-type: inline-size;
+  max-inline-size: var(--_ds-steps-max);
+  margin-inline: auto;
+  padding: var(--ds-space-section) var(--ds-gutter);
+  color: var(--ds-color-ink);
+  font-family: var(--ds-font-paragraph);
+}
+.ds-steps__heading {
+  margin: 14px 0 0;
+  font-family: var(--ds-font-heading);
+  font-weight: var(--ds-weight-heading);
+  line-height: var(--ds-leading-heading);
+  letter-spacing: var(--ds-track-heading);
+  text-transform: var(--ds-case-heading);
+  font-size: calc(clamp(1.9rem, 6cqi, 3rem) * var(--ds-scale-heading));
+  overflow-wrap: anywhere;
+}
+.ds-steps__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(var(--_ds-steps-min), 100%), 1fr));
+  gap: var(--_ds-steps-gap);
+  margin: 48px 0 0;
+  padding: 0;
+  list-style: none;
+}
+@container (max-width: 600px) {
+  .ds-steps__list { margin-top: 32px; }
+}
+.ds-steps__step {
+  min-inline-size: 0;
+  opacity: 0;
+  transform: translateY(var(--_ds-steps-rise));
+  transition:
+    opacity var(--ds-dur-reveal) var(--ds-ease-out) calc(var(--_ds-steps-i) * var(--_ds-steps-stagger)),
+    transform var(--ds-dur-reveal) var(--ds-ease-out) calc(var(--_ds-steps-i) * var(--_ds-steps-stagger));
+}
+.ds-steps__list.is-in .ds-steps__step {
+  opacity: 1;
+  transform: none;
+}
+.ds-steps__num {
+  display: block;
+  margin-bottom: 10px;
+  font-family: var(--ds-font-accent);
+  font-style: italic;
+  font-size: var(--_ds-steps-num);
+  line-height: 1;
+  color: var(--ds-color-accent);
+}
+.ds-steps__title {
+  margin: 0 0 10px;
+  font-family: var(--ds-font-title);
+  font-weight: var(--ds-weight-heading);
+  font-size: calc(1.5rem * var(--ds-scale-title));
+  line-height: var(--ds-leading-heading);
+  letter-spacing: var(--ds-track-title);
+  text-transform: var(--ds-case-title);
+  overflow-wrap: anywhere;
+}
+.ds-steps__text {
+  margin: 0;
+  font-size: 0.96rem;
+  line-height: 1.6;
+  color: var(--ds-color-ink-soft);
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-steps__step {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

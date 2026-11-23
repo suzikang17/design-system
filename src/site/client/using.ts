@@ -17,7 +17,7 @@ export const COMPONENTS_JSON = `{
 }`
 
 /** Pieces whose shipped files start with `'use client'`; ClientUsing.test.tsx holds this to the files themselves. */
-export const CLIENT_PIECES: readonly string[] = ["select", "modal", "phone-input", "input", "textarea", "chips", "eyebrow", "gallery"]
+export const CLIENT_PIECES: readonly string[] = ["select", "modal", "phone-input", "input", "textarea", "chips", "eyebrow", "gallery", "cta-band", "faq", "hero", "nav-bar", "steps"]
 
 export const NEXT_LAYOUT = `// src/app/layout.tsx
 import "@/client/tokens/base.css";

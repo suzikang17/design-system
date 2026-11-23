@@ -74,6 +74,7 @@ const pages: { route: string; frameLook?: string; content?: string[] }[] = [
   // Client work
   { route: "client", content: ["h1", "[data-card-view]"] },
   { route: "client/using", content: ["h1"] },
+  { route: "client/playground", content: ["h1", "iframe"] },
   { route: "client/styles/colour", content: ["h1"] },
   { route: "client/styles/type", content: ["h1"] },
   { route: "client/styles/motion", content: ["h1"] },

@@ -56,6 +56,9 @@ export function ClientNav() {
         <NavLink to="/client" end className={topLink}>
           All pieces
         </NavLink>
+        <NavLink to="/client/playground" className={topLink}>
+          Playground
+        </NavLink>
       </div>
       <NavSection title="Styles">
         {STYLE_PAGES.map((page) => (

@@ -46,5 +46,7 @@ export function ClientChoiceProvider({ children }: { children: ReactNode }) {
 /** The picked client, and how to pick another. Outside the provider the choice is "all" and cannot change. */
 export const useClientChoice = () => useContext(Context)
 
-/** Whether a piece from `origin` belongs to the pick. Neutral is no client's own look, so it shows every piece. */
-export const inChoice = (choice: ClientChoice, origin: readonly string[]) => choice === "all" || choice === "neutral" || origin.includes(choice)
+/** Whether a piece from `origin` belongs to the pick. Neutral is no client's own look, so it shows every piece; a
+ *  piece with no origin is no one client's, and shows for all. */
+export const inChoice = (choice: ClientChoice, origin: readonly string[]) =>
+  choice === "all" || choice === "neutral" || origin.length === 0 || origin.includes(choice)

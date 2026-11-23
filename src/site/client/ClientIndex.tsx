@@ -123,9 +123,19 @@ function PieceCard({ meta, look }: { meta: AnyMeta; look: ThemeId }) {
           data-theme={look}
           data-layout={meta.layout}
         >
-          <PreviewFit width={meta.previewWidth}>
-            <Piece {...meta.defaults} {...meta.cardProps} />
-          </PreviewFit>
+          {meta.group === "sections" ? (
+            // A page section is wider and taller than a card: it is drawn at half size from its top, like the
+            // top of a page seen from further away, and the card crops what does not fit.
+            <div className="relative h-full w-full overflow-hidden" data-card-crop="">
+              <div className="absolute left-0 top-0 w-[200%] origin-top-left scale-50">
+                <Piece {...meta.defaults} {...meta.cardProps} />
+              </div>
+            </div>
+          ) : (
+            <PreviewFit width={meta.previewWidth}>
+              <Piece {...meta.defaults} {...meta.cardProps} />
+            </PreviewFit>
+          )}
         </div>
       </div>
       <div className="flex flex-1 flex-col p-4">

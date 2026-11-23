@@ -17,6 +17,8 @@ const ClientStyles = lazy(() => import("./client/ClientStyles"))
 const ClientUsing = lazy(() => import("./client/ClientUsing"))
 const ClientNotFound = lazy(() => import("./client/ClientNotFound"))
 const ClientPreview = lazy(() => import("./client/ClientPreview"))
+const ClientPlayground = lazy(() => import("./client/ClientPlayground"))
+const ClientPlaygroundPage = lazy(() => import("./client/ClientPlaygroundPage"))
 
 /** The site's theme applies to every page in the site's chrome, and nowhere else. */
 function ThemedSite() {
@@ -30,6 +32,15 @@ function ThemedSite() {
 export function App() {
   return (
     <Routes>
+      {/* The page inside the playground's frame: bare, like a piece's preview. */}
+      <Route
+        path="client/preview/playground"
+        element={
+          <Suspense fallback={null}>
+            <ClientPlaygroundPage />
+          </Suspense>
+        }
+      />
       {/* The bare piece inside a client page's preview frame: no chrome, and no site theme on <html>. */}
       <Route
         path="client/preview/:id"
@@ -49,6 +60,7 @@ export function App() {
           <Route path="client" element={<ClientLayout />}>
             <Route index element={<ClientIndex />} />
             <Route path="using" element={<ClientUsing />} />
+            <Route path="playground" element={<ClientPlayground />} />
             <Route path="styles/:page" element={<ClientStyles />} />
             <Route path=":id" element={<ClientPiece />} />
             <Route path="*" element={<ClientNotFound />} />

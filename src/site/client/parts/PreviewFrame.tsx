@@ -25,8 +25,12 @@ const LAYOUT_HEIGHT = { centered: 420, full: 560, scroll: 640 } as const
 export type PreviewMessage = { type: "ds:state"; search: string } | { type: "ds:replay" }
 
 interface PreviewFrameProps {
+  /** The piece to preview. Leave out when `page` names another page to frame. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- a meta of any piece, as in the registry
-  meta: ComponentMeta<any>
+  meta?: ComponentMeta<any>
+  /** Another page of this site to frame instead of one piece's preview (the playground's page). It scrolls inside
+   *  the device, like a real page on a real screen. */
+  page?: { path: string; title: string }
   /** Encoded state. Only the first value becomes the frame's src; later values are posted to it. */
   search: string
   size: PreviewSize
@@ -40,9 +44,11 @@ interface PreviewFrameProps {
  * space available is drawn scaled down, so the piece still lays out at its true width, and the toolbar says so.
  * The frame is shown inside a drawing of the device it is sized for: a monitor, a tablet or a phone.
  */
-export function PreviewFrame({ meta, search, size, children }: PreviewFrameProps) {
+export function PreviewFrame({ meta, page, search, size, children }: PreviewFrameProps) {
+  const layout = meta?.layout ?? "scroll"
+  const title = page?.title ?? `${meta?.name} preview`
   const [initialSearch] = useState(search)
-  const src = useHref(`/client/preview/${meta.id}?${initialSearch}`)
+  const src = useHref(`${page?.path ?? `/client/preview/${meta?.id}`}?${initialSearch}`)
   const frame = useRef<HTMLIFrameElement>(null)
   const latest = useRef(search)
   latest.current = search
@@ -80,8 +86,8 @@ export function PreviewFrame({ meta, search, size, children }: PreviewFrameProps
   // The device's own frame takes room too: the screen gets what is left.
   const room = available === null ? null : available - 2 * BEZEL[size]
   const scale = px && room && room < px ? room / px : 1
-  const height = frameHeight(Math.max(LAYOUT_HEIGHT[meta.layout], DEVICE_MIN_HEIGHT[size]), scale, meta.layout === "scroll" ? null : reported)
-  const look = new URLSearchParams(search).get("look") ?? meta.homeTheme
+  const height = frameHeight(Math.max(LAYOUT_HEIGHT[layout], DEVICE_MIN_HEIGHT[size]), scale, layout === "scroll" ? null : reported)
+  const look = new URLSearchParams(search).get("look") ?? meta?.homeTheme
 
   const screen = (
     <div
@@ -91,7 +97,7 @@ export function PreviewFrame({ meta, search, size, children }: PreviewFrameProps
     >
       <iframe
         ref={frame}
-        title={`${meta.name} preview`}
+        title={title}
         src={src}
         className="absolute left-0 top-0 block max-w-none origin-top-left motion-safe:transition-[width] motion-safe:duration-300"
         style={{

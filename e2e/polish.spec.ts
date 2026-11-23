@@ -99,3 +99,67 @@ test("a tall piece is shown whole in its page's preview frame (the Photo is not 
     })
     .toBe(true)
 })
+
+test.describe("the playground", () => {
+  const b64 = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url")
+  const pieces = (page: Page) =>
+    page
+      .frameLocator('iframe[title="Your page"]')
+      .locator("[data-item]")
+      .evaluateAll((rows) => rows.map((row) => row.querySelector("[class^='ds-']")?.className.split(" ")[0]))
+
+  test("starts from a whole small page, with nothing spilling sideways inside the device", async ({ page }) => {
+    await page.goto("client/playground")
+    const frame = page.frameLocator('iframe[title="Your page"]')
+    await expect(frame.locator("[data-item]").first()).toBeVisible()
+    expect((await pieces(page)).length).toBeGreaterThanOrEqual(5)
+    const overflow = await frame.locator("body").evaluate(() => ({ s: document.documentElement.scrollWidth, w: window.innerWidth }))
+    expect(overflow.s, `page scrollWidth ${overflow.s} > innerWidth ${overflow.w}`).toBeLessThanOrEqual(overflow.w)
+  })
+
+  test("a piece is dragged from the tray onto the page, dragged to another place, and the link carries the result", async ({ page }, info) => {
+    test.skip(info.project.name === "phone", "dragging with a mouse; touch screens use the buttons, tested below")
+    await page.goto(`client/playground?page=${b64([["chips"], ["button"]])}`)
+    const frame = page.frameLocator('iframe[title="Your page"]')
+    await expect(frame.locator("[data-item]")).toHaveCount(2)
+
+    await page.getByRole("button", { name: "Add Eyebrow" }).dragTo(frame.locator("[data-item]").first(), { targetPosition: { x: 120, y: 4 } })
+    await expect.poll(() => pieces(page)).toEqual(["ds-eyebrow", "ds-chips", "ds-button"])
+
+    await frame.locator("[data-item]").nth(2).hover()
+    await frame.locator("[data-item]").nth(2).locator("[title='Drag to move']").dragTo(frame.locator("[data-item]").first(), { targetPosition: { x: 120, y: 4 } })
+    await expect.poll(() => pieces(page)).toEqual(["ds-button", "ds-eyebrow", "ds-chips"])
+
+    await expect.poll(() => new URL(page.url()).searchParams.get("page")).toBe(b64([["button"], ["eyebrow"], ["chips"]]))
+    await page.reload()
+    await expect.poll(() => pieces(page)).toEqual(["ds-button", "ds-eyebrow", "ds-chips"])
+  })
+
+  test("without dragging: tap to add, the buttons move and remove, and a click opens the piece's options", async ({ page }) => {
+    await page.goto(`client/playground?page=${b64([["chips"], ["button"]])}`)
+    const frame = page.frameLocator('iframe[title="Your page"]')
+    await page.getByRole("button", { name: "Add Eyebrow" }).click()
+    await expect.poll(() => pieces(page)).toEqual(["ds-chips", "ds-button", "ds-eyebrow"])
+    await expect(page.getByRole("heading", { name: "Eyebrow options" })).toBeVisible()
+
+    await frame.getByRole("button", { name: "Move Eyebrow up" }).click()
+    await expect.poll(() => pieces(page)).toEqual(["ds-chips", "ds-eyebrow", "ds-button"])
+    await frame.getByRole("button", { name: "Remove Chips" }).click()
+    await expect.poll(() => pieces(page)).toEqual(["ds-eyebrow", "ds-button"])
+
+    await frame.locator(".ds-button").click()
+    await expect(page.getByRole("heading", { name: "Button options" })).toBeVisible()
+    await page.getByRole("textbox", { name: "Label" }).fill("Book a call")
+    await expect(frame.locator(".ds-button")).toHaveText("Book a call")
+  })
+
+  test("the client picker restyles the whole page", async ({ page }, info) => {
+    test.skip(info.project.name === "phone", "the side nav is behind a menu on phones; the picker itself is tested in unit tests")
+    await page.goto(`client/playground?page=${b64([["button"]])}`)
+    const root = page.frameLocator('iframe[title="Your page"]').locator(".ds-root")
+    await expect(root).toHaveAttribute("data-theme", "wecuratelife")
+    await page.getByRole("combobox", { name: "Client" }).click()
+    await page.getByRole("option", { name: "ur love matters" }).click()
+    await expect(root).toHaveAttribute("data-theme", "urlovematters")
+  })
+})
