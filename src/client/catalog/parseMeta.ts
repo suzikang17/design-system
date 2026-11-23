@@ -7,6 +7,7 @@ import ts from 'typescript'
 
 export interface ClientMetaFields {
   id: string
+  name: string
   summary: string
   files: string[]
   dependencies: string[]
@@ -22,36 +23,70 @@ export function parseClientMeta(source: string, fileName = 'meta file'): ClientM
     throw new Error(`${fileName}: "${field}" ${why}`)
   }
 
+  const EXPECTED = 'expected `export default defineMeta({ ... })` (or `const m = defineMeta({ ... }); export default m`) with an object literal'
+  const unwrap = (node: ts.Expression): ts.Expression => {
+    let n = node
+    while (ts.isParenthesizedExpression(n) || ts.isAsExpression(n) || ts.isSatisfiesExpression(n) || ts.isNonNullExpression(n)) n = n.expression
+    return n
+  }
+  const topLevel = (name: string): ts.Expression | undefined => {
+    for (const statement of file.statements) {
+      if (!ts.isVariableStatement(statement)) continue
+      for (const decl of statement.declarationList.declarations) {
+        if (ts.isIdentifier(decl.name) && decl.name.text === name && decl.initializer) return decl.initializer
+      }
+    }
+    return undefined
+  }
+
   let object: ts.ObjectLiteralExpression | undefined
   for (const statement of file.statements) {
     if (!ts.isExportAssignment(statement) || statement.isExportEquals) continue
-    const call = statement.expression
-    const arg = ts.isCallExpression(call) ? call.arguments[0] : undefined
-    if (arg && ts.isObjectLiteralExpression(arg)) object = arg
+    let expr = unwrap(statement.expression)
+    if (ts.isIdentifier(expr)) {
+      const init = topLevel(expr.text)
+      if (init) expr = unwrap(init)
+    }
+    const arg = ts.isCallExpression(expr) ? expr.arguments[0] : undefined
+    const inner = arg && unwrap(arg)
+    if (inner && ts.isObjectLiteralExpression(inner)) object = inner
   }
-  if (!object) throw new Error(`${fileName}: expected \`export default defineMeta({ ... })\` with an object literal.`)
+  if (!object) throw new Error(`${fileName}: ${EXPECTED}.`)
 
   const props = new Map<string, ts.Expression>()
   for (const prop of object.properties) {
-    if (ts.isPropertyAssignment(prop) && (ts.isIdentifier(prop.name) || ts.isStringLiteralLike(prop.name))) {
-      props.set(prop.name.text, prop.initializer)
+    if (ts.isSpreadAssignment(prop)) {
+      fail('...spread', 'is a spread, which is not allowed: the registry reads this file as text, so every field must be written out.')
     }
+    const key = prop.name
+    if (!key || !(ts.isIdentifier(key) || ts.isStringLiteralLike(key))) {
+      fail(key ? key.getText(file) : 'property', 'is a computed or unnamed property, which is not allowed: the registry reads this file as text.')
+    }
+    const name = (key as ts.Identifier | ts.StringLiteralLike).text
+    if (ts.isShorthandPropertyAssignment(prop)) {
+      fail(name, 'is written as shorthand; write it as `name: <plain literal>`, because the registry reads this file as text.')
+    }
+    if (!ts.isPropertyAssignment(prop)) continue // a method or accessor: not a registry field
+    if (props.has(name)) fail(name, 'is listed twice.')
+    props.set(name, prop.initializer)
   }
 
   const text = (field: string): string => {
     const node = props.get(field)
     if (!node) return fail(field, 'is missing.')
-    return stringOf(node) ?? fail(field, 'must be a plain string literal.')
+    return stringOf(unwrap(node)) ?? fail(field, 'must be a plain string literal.')
   }
   const list = (field: string, required: boolean): string[] => {
     const node = props.get(field)
     if (!node) return required ? fail(field, 'is missing.') : []
-    if (!ts.isArrayLiteralExpression(node)) return fail(field, 'must be an array literal of plain strings.')
-    return node.elements.map((el) => stringOf(el) ?? fail(field, 'must contain only plain string literals.'))
+    const array = unwrap(node)
+    if (!ts.isArrayLiteralExpression(array)) return fail(field, 'must be an array literal of plain strings.')
+    return array.elements.map((el) => stringOf(unwrap(el)) ?? fail(field, 'must contain only plain string literals.'))
   }
 
   return {
     id: text('id'),
+    name: text('name'),
     summary: text('summary'),
     files: list('files', true),
     dependencies: list('dependencies', false),

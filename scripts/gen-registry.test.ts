@@ -161,7 +161,7 @@ describe("client items", () => {
     writeFileSync(join(root, path), text)
   }
   const meta = (id: string, extra = "", files = `['src/client/components/${id}/${id}.css', 'src/client/components/${id}/${id}.meta.ts', 'src/client/components/${id}/${id}.test.tsx', 'src/client/components/${id}/${id}.tsx']`) =>
-    `import { defineMeta } from '@/client/catalog/meta'\nexport default defineMeta({ id: '${id}', summary: 'The ${id}.', files: ${files}, ${extra} })\n`
+    `import { defineMeta } from '@/client/catalog/meta'\nexport default defineMeta({ id: '${id}', name: 'The ${id} piece', summary: 'The ${id}.', files: ${files}, ${extra} })\n`
   write("package.json", JSON.stringify({ dependencies: { clsx: "^2.1.1", "@fontsource/poppins": "^5", "@fontsource/tangerine": "^5" } }))
   write("src/lib/utils.ts", "export const cn = () => ''\n")
   write("src/components/ui/button.tsx", "export const Button = () => <button />\n")
@@ -173,7 +173,7 @@ describe("client items", () => {
   write("src/client/components/modal/modal.css", ".x{}\n")
   write("src/client/components/modal/modal.test.tsx", "x\n")
   write("src/client/components/modal/modal.meta.ts", meta("modal", "registryDependencies: ['button', 'base', 'button'],"))
-  write("src/client/tokens/contract.ts", "export const TOKENS = []\n")
+  write("src/client/tokens/contract.ts", "export const THEMES = [\n  { id: 'wecuratelife', label: 'We Curate Life' },\n]\n")
   write("src/client/tokens/lint.ts", "export {}\n")
   write("src/client/tokens/all.css", "x\n")
   write("src/client/tokens/base.css", ".ds-root{}\n")
@@ -200,6 +200,7 @@ describe("client items", () => {
       { path: "src/client/components/button/button.tsx", type: "registry:component", target: "~/src/client/components/button/button.tsx" },
     ])
     expect(button?.description).toBe("The button.")
+    expect(button?.title).toBe("The button piece")
   })
 
   it("puts client-base first, maps plain ids to client-<id>, and de-duplicates", () => {
@@ -226,6 +227,8 @@ describe("client items", () => {
     expect(look?.files?.map((f) => f.path)).toEqual(["src/client/tokens/themes/wecuratelife.css"])
     expect(look?.registryDependencies).toEqual([`${SITE}/r/client-base.json`])
     expect(find("client-look-neutral")?.dependencies).toBeUndefined()
+    expect(look?.title).toBe("We Curate Life look")
+    expect(find("client-look-neutral")?.title).toBe("Neutral look")
   })
 
   it("refuses an import a client item cannot carry", () => {
@@ -244,6 +247,26 @@ describe("client items", () => {
     rmSync(join(root, "src/client/components/bad"), { recursive: true })
   })
 
+  it("refuses to ship tests, metas, dev-only token files and files outside the component's folder", () => {
+    const withFiles = (files: string) => {
+      write("src/client/components/bad/bad.tsx", "export {}\n")
+      write("src/client/components/bad/bad.meta.ts", meta("bad", "", files))
+      return () => build()
+    }
+    expect(withFiles("['src/client/tokens/lint.ts']")).toThrow(/bad.*lint\.ts.*cannot be shipped/)
+    expect(withFiles("['src/client/tokens/all.css']")).toThrow(/all\.css.*cannot be shipped/)
+    expect(withFiles("['src/client/tokens/base.css']")).toThrow(/outside src\/client\/components\/bad\//)
+    expect(withFiles("['src/client/components/button/button.tsx']")).toThrow(/outside src\/client\/components\/bad\//)
+    expect(withFiles("['src/client/components/bad/bad.tsx']")).not.toThrow()
+    rmSync(join(root, "src/client/components/bad"), { recursive: true })
+  })
+
+  it("names the file that imports a missing package in client-base", () => {
+    write("src/client/hooks/useBad.ts", "import 'left-pad'\nexport {}\n")
+    expect(() => build()).toThrow(/src\/client\/hooks\/useBad\.ts imports "left-pad"/)
+    rmSync(join(root, "src/client/hooks/useBad.ts"))
+  })
+
   it("still refuses two items with one name", () => {
     write("src/client/components/base/base.tsx", "export {}\n")
     write("src/client/components/base/base.meta.ts", meta("base", "", "['src/client/components/base/base.tsx']"))
@@ -253,13 +276,12 @@ describe("client items", () => {
   })
 })
 
-describe("the real client items", () => {
-  const repo = join(import.meta.dirname, "..")
-  const real = buildRegistry(SITE).items
-  const clientItems = real.filter((i) => i.name.startsWith("client-"))
-  const byName = new Map(clientItems.map((i) => [i.name, i]))
-  const nameOf = (url: string) => url.replace(/^.*\//, "").replace(/\.json$/, "")
-
+/**
+ * Every relative specifier in the items' shipped files (imports in .ts/.tsx; `@import` and `url(...)` in CSS, other
+ * than the node_modules font urls) and the ones that no file of the item or its dependencies satisfies.
+ */
+function unresolvedReferences(items: RegistryItem[], readFile: (path: string) => string) {
+  const byName = new Map(items.map((i) => [i.name, i]))
   const closure = (name: string, seen = new Set<string>()): Set<string> => {
     const files = new Set<string>()
     if (seen.has(name)) return files
@@ -267,9 +289,33 @@ describe("the real client items", () => {
     const found = byName.get(name)
     if (!found) throw new Error(`unknown registry item ${name}`)
     for (const f of found.files ?? []) files.add(f.path)
-    for (const dep of found.registryDependencies ?? []) for (const f of closure(nameOf(dep), seen)) files.add(f)
+    for (const dep of found.registryDependencies ?? []) for (const f of closure(dep.replace(/^.*\//, "").replace(/\.json$/, ""), seen)) files.add(f)
     return files
   }
+  const checked: { from: string; spec: string }[] = []
+  const problems: string[] = []
+  for (const item of items) {
+    const available = closure(item.name)
+    for (const { path } of item.files ?? []) {
+      const text = readFile(path)
+      const specs = /\.tsx?$/.test(path)
+        ? importSpecifiers(text, path)
+        : [...text.matchAll(/@import\s+(?:url\()?\s*["']([^"']+)["']|url\(\s*["']?([^"')]+?)["']?\s*\)/g)].map((m) => m[1] ?? m[2])
+      for (const spec of specs.filter((s) => s.startsWith(".") && !s.includes("node_modules/"))) {
+        checked.push({ from: path, spec })
+        const base = normalize(join(dirname(path), spec))
+        const found = ["", ".ts", ".tsx", "/index.ts", "/index.tsx"].map((e) => base + e).find((p) => available.has(p))
+        if (!found) problems.push(`${path} imports ${spec}, which ${item.name} does not ship`)
+      }
+    }
+  }
+  return { checked, problems }
+}
+
+describe("the real client items", () => {
+  const repo = join(import.meta.dirname, "..")
+  const real = buildRegistry(SITE).items
+  const clientItems = real.filter((i) => i.name.startsWith("client-"))
   const shipped = clientItems.flatMap((i) => (i.files ?? []).map((f) => ({ item: i.name, path: f.path })))
 
   it("has an item per meta, a base, and a look per theme file", () => {
@@ -296,20 +342,51 @@ describe("the real client items", () => {
   })
 
   it("resolves every relative import and CSS import inside the item and its dependencies", () => {
-    for (const item of clientItems) {
-      const available = closure(item.name)
-      for (const { path } of (item.files ?? []).map((f) => ({ path: f.path }))) {
-        const text = readFileSync(join(repo, path), "utf8")
-        const specs = /\.tsx?$/.test(path)
-          ? importSpecifiers(text, path)
-          : [...text.matchAll(/@import\s+(?:url\()?["']([^"']+)["']/g)].map((m) => m[1])
-        for (const spec of specs.filter((s) => s.startsWith("."))) {
-          const base = normalize(join(dirname(path), spec))
-          const found = ["", ".ts", ".tsx", "/index.ts", "/index.tsx"].map((e) => base + e).find((p) => available.has(p))
-          expect(found, `${path} imports ${spec}, which ${item.name} does not ship`).toBeDefined()
+    const { checked, problems } = unresolvedReferences(clientItems, (p) => readFileSync(join(repo, p), "utf8"))
+    expect(problems).toEqual([])
+    // Guard against a vacuous pass: specifiers were found, among them CSS imported from a component.
+    expect(checked.length).toBeGreaterThan(0)
+    expect(checked.some((c) => c.from.endsWith(".tsx") && c.spec.endsWith(".css"))).toBe(true)
+  })
+
+  // These font URLs reach `node_modules` by a relative path, so after copy-out they resolve only when node_modules
+  // sits at the consuming project's root (documented on the Using page).
+  it("points every look's font url(...) at a file that exists, in a package the look lists", () => {
+    const looks = clientItems.filter((i) => i.name.startsWith("client-look-"))
+    let urls = 0
+    for (const look of looks) {
+      for (const f of look.files ?? []) {
+        for (const [, pkg, rest] of readFileSync(join(repo, f.path), "utf8").matchAll(/url\(\s*["']?[^"')]*node_modules\/(@fontsource\/[^/"')]+)\/([^"')]+)["']?\s*\)/g)) {
+          urls++
+          expect(existsSync(join(repo, "node_modules", pkg!, rest!)), `${f.path}: ${pkg}/${rest}`).toBe(true)
+          expect(look.dependencies, `${f.path} uses ${pkg}`).toContain(pkg)
         }
       }
     }
+    expect(urls).toBeGreaterThan(0)
+  })
+
+  it("flags a relative CSS import or url(...) that the item does not ship", () => {
+    const root = mkdtempSync(join(tmpdir(), "registry-css-"))
+    const put = (path: string, text: string) => {
+      mkdirSync(dirname(join(root, path)), { recursive: true })
+      writeFileSync(join(root, path), text)
+    }
+    const dir = "src/client/components/box"
+    put("package.json", JSON.stringify({ dependencies: {} }))
+    put("src/lib/utils.ts", "export {}\n")
+    put(`${dir}/box.tsx`, "import './box.css'\n")
+    put(`${dir}/box.css`, '@import "./part.css";\n.a{background:url(./icon.svg)}\n.b{background:url("./gone.svg")}\n@import url("./missing.css");\n')
+    put(`${dir}/part.css`, ".p{}\n")
+    put(`${dir}/icon.svg`, "<svg/>")
+    put(`${dir}/box.meta.ts`, `export default defineMeta({ id: 'box', name: 'Box', summary: 's', files: ['${dir}/box.tsx', '${dir}/box.css', '${dir}/part.css', '${dir}/icon.svg'] })`)
+    put("src/client/tokens/base.css", ".ds-root{}\n")
+    put("src/client/tokens/contract.ts", "export {}\n")
+    const items = buildRegistry(SITE, root).items.filter((i) => i.name.startsWith("client-"))
+    const { checked, problems } = unresolvedReferences(items, (p) => readFileSync(join(root, p), "utf8"))
+    rmSync(root, { recursive: true, force: true })
+    expect(checked.map((c) => c.spec).sort()).toEqual(["./box.css", "./gone.svg", "./icon.svg", "./missing.css", "./part.css"])
+    expect(problems.map((p) => p.replace(/^.*imports /, "")).sort()).toEqual(["./gone.svg, which client-box does not ship", "./missing.css, which client-box does not ship"])
   })
 
   it("starts every shipped client component that needs it with 'use client'", () => {

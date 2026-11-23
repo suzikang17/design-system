@@ -255,6 +255,21 @@ export function buildRegistry(homepage: string, root = ".") {
       else if (path.endsWith(".ts")) type = "registry:lib"
       return { path, type, target: `~/${path}` }
     }
+    /** Test files, metas, dev-only helpers and files outside the item's own home never ship. */
+    const assertShippable = (path: string, item: string, home?: string) => {
+      if (/\.(test|spec|meta)\.tsx?$/.test(path) || /\/tokens\/(lint\.ts|all\.css)$/.test(path)) {
+        throw new Error(`${item}: ${path} is a test, meta or dev-only file and cannot be shipped.`)
+      }
+      if (home && !path.startsWith(`${home}/`)) {
+        throw new Error(`${item}: ${path} is outside ${home}/. A component ships only files from its own folder; token and hook files ship through client-base and the looks.`)
+      }
+    }
+    /** Look labels, read as text from the THEMES list in the token contract. */
+    const lookLabels = new Map<string, string>()
+    const contract = `${CLIENT}/tokens/contract.ts`
+    if (existsSync(at(contract))) {
+      for (const m of read(contract).matchAll(/\bid:\s*['"]([\w-]+)['"]\s*,\s*label:\s*(['"])(.*?)\2/g)) lookLabels.set(m[1], m[3])
+    }
     const checkedPackage = (dep: string, path: string) => {
       if (!pkg.dependencies?.[dep]) throw new Error(`${path} imports "${dep}", which is not in package.json dependencies.`)
       return published(dep, path)
@@ -285,19 +300,21 @@ export function buildRegistry(homepage: string, root = ".") {
         ...list(`${CLIENT}/hooks`).filter(isSourceFile).map((file) => `${CLIENT}/hooks/${file}`),
       ].map(fileEntry),
     }
-    const basePackages = unique(base.files!.flatMap((f) => packagesOf(f.path)))
-    if (basePackages.length) base.dependencies = basePackages.map((dep) => checkedPackage(dep, base.files![0].path))
+    const basePackages = new Set<string>()
+    for (const f of base.files!) for (const dep of packagesOf(f.path)) basePackages.add(checkedPackage(dep, f.path))
+    if (basePackages.size) base.dependencies = [...basePackages].sort()
 
     const components = list(`${CLIENT}/components`).map((id): RegistryItem => {
       const metaPath = `${CLIENT}/components/${id}/${id}.meta.ts`
       const meta = parseClientMeta(read(metaPath), metaPath)
       const paths = meta.files.filter(shippable)
+      for (const path of paths) assertShippable(path, `client-${meta.id}`, `${CLIENT}/components/${id}`)
       const deps = meta.registryDependencies.map((dep) => (dep === "base" ? "client-base" : `client-${dep}`))
       const packages = unique([...meta.dependencies, ...paths.flatMap(packagesOf)])
       const item: RegistryItem = {
         name: `client-${meta.id}`,
         type: "registry:component",
-        title: titleFromName(meta.id),
+        title: meta.name,
         description: meta.summary,
         registryDependencies: ["client-base", ...unique(deps).filter((n) => n !== "client-base")].map(itemUrl),
         files: paths.map(fileEntry),
@@ -315,7 +332,7 @@ export function buildRegistry(homepage: string, root = ".") {
         const item: RegistryItem = {
           name: `client-look-${id}`,
           type: "registry:item",
-          title: `${titleFromName(id)} look`,
+          title: `${lookLabels.get(id) ?? titleFromName(id)} look`,
           description: `The ${id} look's token values and fonts.`,
           registryDependencies: [itemUrl("client-base")],
           files: [fileEntry(path)],
@@ -324,7 +341,9 @@ export function buildRegistry(homepage: string, root = ".") {
         return item
       })
 
-    return [base, ...components, ...looks]
+    const all = [base, ...components, ...looks]
+    for (const item of all) for (const f of item.files ?? []) assertShippable(f.path, item.name)
+    return all
   }
 
   const libItems = [codeItem("utils", "registry:lib", ["src/lib/utils.ts"], { title: "utils", description: "The cn() class-name helper." })]
