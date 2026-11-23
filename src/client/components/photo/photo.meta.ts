@@ -7,7 +7,7 @@ export default defineMeta<PhotoProps>({
   group: 'primitives',
   origin: ['wecuratelife', 'urlovematters'],
   summary:
-    'One photo in a frame. Print and plain are ported from the live sites, mat from an unused rule on We Curate Life; cameo and arch are new designs drawn from notes in its source, not shipped client work.',
+    'One photo in a frame. Print and plain come from the live sites, mat is a quieter variant, and cameo and arch are new designs that have not shipped on a client site.',
   component: Photo,
   defaults: {
     image: {

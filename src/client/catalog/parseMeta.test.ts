@@ -6,6 +6,18 @@ import { parseClientMeta } from './parseMeta'
 const root = join(import.meta.dirname, '..', '..', '..')
 
 describe('parseClientMeta', () => {
+  it.each(['files', 'dependencies', 'registryDependencies'])('rejects %s written as a method, naming it', (field) => {
+    const source = `export default defineMeta({ id: 'a', name: 'A', summary: 's', files: ['a.tsx'], ${field}() { return ['x'] } })`
+    // a duplicate of `files` would be caught as listed twice; the method form must be caught first
+    const only = field === 'files' ? source.replace("files: ['a.tsx'], ", '') : source
+    expect(() => parseClientMeta(only, 'a.meta.ts')).toThrow(new RegExp(`a\\.meta\\.ts: "${field}" is written as a method`))
+  })
+
+  it('still ignores a method that is not a registry field', () => {
+    const source = `export default defineMeta({ id: 'a', name: 'A', summary: 's', files: ['a.tsx'], render() { return null } })`
+    expect(parseClientMeta(source).files).toEqual(['a.tsx'])
+  })
+
   it('reads the registry fields and ignores the rest', () => {
     const source = `import { defineMeta } from '@/client/catalog/meta'
 export default defineMeta({

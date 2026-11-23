@@ -5,7 +5,7 @@ import { Input, type InputProps } from '../input/Input'
 
 /** US numbers format as you type: (858) 555-0123, with a leading 1 kept as "+1 " once the number runs past ten
  *  digits. Anything starting with + (other than +1), or longer than a US number, is left as typed apart from
- *  stray characters. Ported from initPhone in the We Curate Life contact script. */
+ *  stray characters. */
 // the formatter ships beside the component so a copied-out project gets both from one file
 // eslint-disable-next-line react-refresh/only-export-components
 export function formatPhone(raw: string): string {
@@ -52,7 +52,7 @@ export function PhoneInput({ onChange, onCompositionEnd, defaultValue, ...rest }
         const atEnd = caret >= raw.length
         const before = digitCount(raw.slice(0, caret))
         el.value = formatted
-        // the source jumps to the end; keep the caret after the same digit when editing mid-number
+        // setting the value jumps the caret to the end; keep the caret after the same digit when editing mid-number
         const next = atEnd ? formatted.length : indexAfterDigits(formatted, before)
         el.setSelectionRange(next, next)
       }

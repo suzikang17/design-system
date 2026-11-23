@@ -324,11 +324,13 @@ export function buildRegistry(homepage: string, root = ".") {
         const id = stem(file)
         const path = `${CLIENT}/tokens/themes/${file}`
         const fonts = unique((read(path).match(/@fontsource\/[a-z0-9-]+/g) ?? []))
+        const label = lookLabels.get(id)
+        if (!label) throw new Error(`${path}: the look "${id}" has no label in ${contract}; add { id: '${id}', label: '...' } to THEMES.`)
         const item: RegistryItem = {
           name: `client-look-${id}`,
           type: "registry:item",
-          title: `${lookLabels.get(id) ?? titleFromName(id)} look`,
-          description: `The ${id} look's token values and fonts.`,
+          title: `${label} look`,
+          description: `The ${label} look's token values.`,
           registryDependencies: [itemUrl("client-base")],
           files: [fileEntry(path)],
         }

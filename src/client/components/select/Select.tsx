@@ -18,7 +18,7 @@ export type SelectProps = {
   variant?: FieldVariant
 }
 
-/** A button that opens a listbox of choices. Ported from the We Curate Life contact form (initDropdowns):
+/** A button that opens a listbox of choices. Behaviour follows the native select's keyboard model:
  *  focus moves onto the options themselves, Enter/Space choose, Esc closes and returns focus to the button. */
 export function Select({ label, options, value, defaultValue = '', onChange, name, placeholder, variant = 'box' }: SelectProps) {
   const uid = useId()

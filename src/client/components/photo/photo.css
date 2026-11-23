@@ -1,6 +1,5 @@
-/* Honesty note: print and plain are ported from live sites (We Curate Life gallery, ur love matters);
-   mat is ported from a rule on that site that is not in use; cameo and arch are new designs drawn from notes in
-   the We Curate Life source, not shipped client work.
+/* Print and plain come from the live sites (We Curate Life gallery, ur love matters); mat is a quieter variant;
+   cameo and arch are new designs that have not shipped on a client site.
    Photo: one image in one of five frames. The figure carries the tilt and the print's drop shadow; the well
    carries the frame (mat, mask, ring, radius) and clips the zoom; the img only fills the well. */
 .ds-photo {

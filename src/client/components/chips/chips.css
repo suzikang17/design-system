@@ -73,7 +73,7 @@
 .ds-chips--stagger.is-in .ds-chip {
   opacity: 1;
   animation: ds-chips-rise var(--_ds-chips-fade-dur) var(--ds-ease-out) backwards;
-  /* capped: chips past the ninth start with the ninth (.52s, as the source caps it) */
+  /* capped: chips past the ninth start with the ninth (.52s) */
   animation-delay: calc(var(--_ds-chips-base-delay) + var(--_ds-chips-step) * min(var(--i, 0), 8));
 }
 

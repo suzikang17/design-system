@@ -6,6 +6,7 @@ import { CodeBlock } from "../CodeBlock"
 import { CopyButton } from "../CopyButton"
 import { Dependencies, Section } from "../DetailSections"
 import { safeHref } from "../safeHref"
+import { installCommand } from "../installCommand"
 import { useLoaded } from "../useLoaded"
 import { useTitle } from "../useTitle"
 import NotFound from "./NotFound"
@@ -25,7 +26,7 @@ function Detail({ entry }: { entry: CatalogEntry }) {
   const dependencies = useLoaded<PublishedDependencies | null>(entry.loadDependencies, null)
   const ready = [source, data, showcase, dependencies].every((loaded) => loaded.state !== "loading")
   const sourceHref = entry.source && safeHref(entry.source.url)
-  const command = `pnpm dlx shadcn@latest add ${window.location.origin}/r/${entry.name}.json`
+  const command = installCommand(entry.name)
 
   return (
     <article data-ready={ready ? "" : undefined} className="max-w-4xl">

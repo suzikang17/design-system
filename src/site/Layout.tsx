@@ -67,6 +67,9 @@ export function Layout() {
           <Link to="/components" className="hover:text-foreground">
             Components
           </Link>
+          <Link to="/client" className="hover:text-foreground">
+            Client work
+          </Link>
           <a href="/r/registry.json" className="hover:text-foreground">
             Registry index
           </a>

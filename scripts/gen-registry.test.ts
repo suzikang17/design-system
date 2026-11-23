@@ -167,7 +167,7 @@ describe("client items", () => {
   write("src/client/components/modal/modal.css", ".x{}\n")
   write("src/client/components/modal/modal.test.tsx", "x\n")
   write("src/client/components/modal/modal.meta.ts", meta("modal", "registryDependencies: ['button', 'base', 'button'],"))
-  write("src/client/tokens/contract.ts", "export const THEMES = [\n  { id: 'wecuratelife', label: 'We Curate Life' },\n]\n")
+  write("src/client/tokens/contract.ts", "export const THEMES = [\n  { id: 'wecuratelife', label: 'We Curate Life' },\n  { id: 'neutral', label: 'Neutral' },\n]\n")
   write("src/client/tokens/lint.ts", "export {}\n")
   write("src/client/tokens/all.css", "x\n")
   write("src/client/tokens/base.css", ".ds-root{}\n")
@@ -223,6 +223,17 @@ describe("client items", () => {
     expect(find("client-look-neutral")?.dependencies).toBeUndefined()
     expect(look?.title).toBe("We Curate Life look")
     expect(find("client-look-neutral")?.title).toBe("Neutral look")
+  })
+
+  it("describes a look with its label, not its id", () => {
+    expect(find("client-look-wecuratelife")?.description).toBe("The We Curate Life look's token values.")
+    expect(find("client-look-neutral")?.description).toBe("The Neutral look's token values.")
+  })
+
+  it("throws, naming the file, when a look has no label in the contract", () => {
+    write("src/client/tokens/themes/unlabelled.css", ".ds-root{}\n")
+    expect(() => build()).toThrow(/themes\/unlabelled\.css.*"unlabelled".*label/)
+    rmSync(join(root, "src/client/tokens/themes/unlabelled.css"))
   })
 
   it("refuses an import a client item cannot carry", () => {

@@ -11,14 +11,13 @@ React components, themes and tokens. The repo publishes them as a shadcn registr
 pnpm install
 pnpm dev            # build the registry for http://localhost:5173, then serve the site with live examples
 pnpm build          # build the registry, then dist/ (vite build)
-pnpm deploy:preview # build, then deploy to Cloudflare workers.dev (see Hosting)
+pnpm deploy:preview # check SITE_URL and the account, build, then deploy to Cloudflare workers.dev (see Hosting)
 pnpm preview        # serve dist/ on http://localhost:4173
 pnpm registry       # registry.json (gen:registry), then public/r/*.json (build:registry)
 pnpm test           # vitest
 pnpm typecheck
 pnpm lint
 pnpm e2e            # browser checks (Playwright) against a production build on port 4317
-pnpm e2e:compare    # the 72 before-and-after screenshots of the client pieces (see Browser checks)
 pnpm verify         # typecheck, lint, unit tests, then the browser checks
 pnpm gen:registry   # registry.json only
 pnpm build:registry # public/r/*.json from registry.json (shadcn build)
@@ -28,8 +27,6 @@ pnpm new <name>     # scaffold a component and its showcase
 ## Browser checks
 
 `pnpm e2e` builds the site, serves it on port 4317 and runs the Playwright suites in `e2e/` at 1280x800 and 390x844: every page type loads without console errors or sideways overflow, the client pieces render in all three looks, and rendered details (heights, paddings, reduced motion, focus) are measured. The first time on a machine, install the browser: `pnpm exec playwright install --with-deps chromium`.
-
-`e2e/compare-shots.mjs` (`pnpm e2e:compare`, with the site served on port 4317) takes screenshots of the client pieces from this site and compares them with reference screenshots from the standalone build, which are kept outside the repo (`.superpowers/ref/plan1-shots`, or set `REF_DIR`). It allows a difference of 2 in each colour channel, reports the share of differing pixels per shot, writes diff images to `e2e/shots/compare/`, and fails when a shot differs by more than 1% of its pixels.
 
 ## Client work
 
@@ -123,6 +120,8 @@ The components expect Tailwind CSS 3.4 and HSL channel tokens such as `--primary
 3. Add a theme: `pnpm dlx shadcn@latest add <site>/r/sky.json`.
 4. Add a component: `pnpm dlx shadcn@latest add <site>/r/<name>.json`.
 
+Client pieces (`client-<id>`) need no Tailwind and no `@/` alias, and a project adds the base and one look once: see `/client/using` on the deployed site.
+
 `<site>` is the address of the deployed site. Each component page shows its own command. The CLI also:
 
 - installs the items that the component depends on from `<site>/r/`.
@@ -139,7 +138,9 @@ Preview on `workers.dev`:
 
 1. Run `pnpm exec wrangler login` once.
 2. In the shell, set `CLOUDFLARE_ACCOUNT_ID` to the account the Worker belongs to (the id is not kept in the repo, and a login can reach more than one account) and `SITE_URL` to the address the preview will have, for example `https://design-system.<subdomain>.workers.dev`.
-3. Run `pnpm deploy:preview`. It builds, then runs `wrangler deploy`.
+3. Run `pnpm deploy:preview`. It first runs `scripts/require-site-url.mjs`, which stops unless `SITE_URL` is an `https://` address and `CLOUDFLARE_ACCOUNT_ID` is set (use the owner's own account), so a forgotten variable cannot publish a registry that points at localhost. Then it builds and runs `wrangler deploy`.
+
+`public/_headers` (copied to `dist/`, read by Cloudflare, not served) gives `/assets/*` a one-year immutable cache, since Vite hashes those file names, and sends `X-Content-Type-Options: nosniff` and `Content-Security-Policy: frame-ancestors 'self'` on every path: the site frames its own `/client/preview/*` pages and nothing else may frame it. Vite's dev server and `pnpm preview` ignore it.
 
 There is no script for a production deploy or a custom domain yet.
 

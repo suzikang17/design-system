@@ -14,6 +14,8 @@ export interface ClientMetaFields {
   registryDependencies: string[]
 }
 
+const REGISTRY_FIELDS = new Set(['id', 'name', 'summary', 'files', 'dependencies', 'registryDependencies'])
+
 const stringOf = (node: ts.Expression): string | undefined => (ts.isStringLiteralLike(node) ? node.text : undefined)
 
 /** `fileName` only names the file in error messages. */
@@ -66,7 +68,11 @@ export function parseClientMeta(source: string, fileName = 'meta file'): ClientM
     if (ts.isShorthandPropertyAssignment(prop)) {
       fail(name, 'is written as shorthand; write it as `name: <plain literal>`, because the registry reads this file as text.')
     }
-    if (!ts.isPropertyAssignment(prop)) continue // a method or accessor: not a registry field
+    if (!ts.isPropertyAssignment(prop)) {
+      // A method or accessor is not a literal. For a registry field it would read as missing or empty, so say so.
+      if (REGISTRY_FIELDS.has(name)) fail(name, 'is written as a method or accessor; write it as `name: <plain literal>`, because the registry reads this file as text.')
+      continue
+    }
     if (props.has(name)) fail(name, 'is listed twice.')
     props.set(name, prop.initializer)
   }
