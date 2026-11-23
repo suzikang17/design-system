@@ -206,14 +206,17 @@ test("the site's Midnight theme does not leak into a piece: the preview wears it
 
 test("a nested look root overrides the outer look tokens", async ({ page }) => {
   await page.goto("client/styles/colour")
+  // neutral has a 6px button radius and urlovematters has 0, so only a real override can read 0 inside.
   const radius = await page.evaluate(() => {
     document.body.insertAdjacentHTML(
       "beforeend",
-      '<div class="ds-root" data-theme="wecuratelife"><div class="ds-root" data-theme="urlovematters" id="in"></div></div>',
+      '<div class="ds-root" data-theme="neutral" id="out"><div class="ds-root" data-theme="urlovematters" id="in"></div></div>',
     )
-    return getComputedStyle(document.getElementById("in")!).getPropertyValue("--ds-radius-button").trim()
+    const read = (id: string) => getComputedStyle(document.getElementById(id)!).getPropertyValue("--ds-radius-button").trim()
+    return { outer: read("out"), inner: read("in") }
   })
-  expect(radius).toBe("0")
+  expect(radius.outer).toBe("6px")
+  expect(radius.inner).toBe("0")
 })
 
 test("the Modal opens in the preview, is named by its title, and Escape closes it and returns focus to the trigger", async ({ page }) => {
