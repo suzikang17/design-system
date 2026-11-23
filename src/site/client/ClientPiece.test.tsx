@@ -39,6 +39,10 @@ describe("a client piece's page", () => {
   it("shows the name, the summary and a preview frame bound to the piece's home look", async () => {
     await openButton()
     expect(screen.getByText(button.summary)).toBeInTheDocument()
+    // the name and the tabs come before the piece; the words about it come after
+    const heading = screen.getByRole("heading", { level: 1, name: "Button" })
+    expect(heading.compareDocumentPosition(frame()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(frame().compareDocumentPosition(screen.getByText(button.summary)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(frame().getAttribute("src")).toMatch(/\/client\/preview\/button\?look=urlovematters$/)
     expect(picker()).toHaveTextContent("All clients")
     expect(document.title).toBe("Button · Client work · Design System")
@@ -129,6 +133,9 @@ describe("a client piece's page", () => {
     await userEvent.tab()
     await userEvent.tab()
     expect(screen.getByRole("button", { name: "Replay" })).toHaveFocus()
+    // the words about the piece (its group link) sit between the preview and the options
+    await userEvent.tab()
+    expect(screen.getByRole("link", { name: "Primitives" })).toHaveFocus()
     await userEvent.tab()
     expect(screen.getByRole("textbox", { name: "Label" })).toHaveFocus()
     for (const name of ["Preview", "Options"]) expect(screen.getByRole("region", { name })).toBeInTheDocument()

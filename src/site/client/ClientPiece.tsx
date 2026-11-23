@@ -155,32 +155,38 @@ function Piece({ meta }: { meta: AnyMeta }) {
 
   return (
     <article data-ready={dependencies.state !== "loading" ? "" : undefined}>
-      <div className="max-w-3xl">
-        {group && (
-          <Link to={`/client?group=${group.id}`} className="text-sm text-muted-foreground hover:text-foreground">
-            {group.label}
-          </Link>
-        )}
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight md:text-4xl">{meta.name}</h1>
-        <p className="mt-3 max-w-2xl text-lg text-muted-foreground">{meta.summary}</p>
-        {meta.seenOn && <SeenOn url={meta.seenOn} />}
-      </div>
-
-      {/* Most visitors are not developers: how to install a piece, and its code, sit on a tab of their own. The
-          preview tab stays mounted while hidden, so its frame and the options keep their state. */}
-      <Tabs value={tab} onValueChange={setTab} className="mt-8">
-        <TabsList>
-          <TabsTrigger value="preview">Preview</TabsTrigger>
-          <TabsTrigger value="usage">Usage</TabsTrigger>
-        </TabsList>
+      {/* The piece comes first: one line holds its name and the tabs, and the words about it follow the preview.
+          The preview tab stays mounted while hidden, so its frame and the options keep their state. Most visitors
+          are not developers: how to install a piece, and its code, sit on the Usage tab. */}
+      <Tabs value={tab} onValueChange={setTab}>
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{meta.name}</h1>
+          <TabsList>
+            <TabsTrigger value="preview">Preview</TabsTrigger>
+            <TabsTrigger value="usage">Usage</TabsTrigger>
+          </TabsList>
+        </div>
         <TabsContent value="preview" forceMount hidden={tab !== "preview"} className="mt-0">
-      <section aria-labelledby="preview" className="mt-6">
+      <section aria-labelledby="preview" className="mt-4">
         <h2 id="preview" className="sr-only">
           Preview
         </h2>
         <PreviewFrame meta={meta} search={search} size={size}>
           <SizeSwitch value={size} onChange={setSize} />
         </PreviewFrame>
+        <div className="mt-4 max-w-2xl">
+          <p className="text-muted-foreground">{meta.summary}</p>
+          {(group || meta.seenOn) && (
+            <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              {group && (
+                <Link to={`/client?group=${group.id}`} className="hover:text-foreground">
+                  {group.label}
+                </Link>
+              )}
+              {meta.seenOn && <SeenOn url={meta.seenOn} />}
+            </p>
+          )}
+        </div>
       </section>
 
       <Section id="options" title="Options">
@@ -230,14 +236,14 @@ const hostOf = (url: string) => {
 
 function SeenOn({ url }: { url: string }) {
   return (
-    <p className="mt-3 text-sm text-muted-foreground">
+    <span>
       Seen on{" "}
       <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-primary underline-offset-4 hover:underline">
         {hostOf(url)}
         <ExternalLink aria-hidden="true" className="size-3.5" />
         <span className="sr-only"> (opens in a new tab)</span>
       </a>
-    </p>
+    </span>
   )
 }
 
