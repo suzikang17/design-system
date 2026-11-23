@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- test helpers, never hot-reloaded */
-import { configure, render } from "@testing-library/react"
+import { configure, render, screen, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { MemoryRouter, useLocation, useNavigate } from "react-router-dom"
 import { vi } from "vitest"
 
@@ -58,4 +59,14 @@ export function stubRegistry() {
 /** The site's page shell scrolls to the top on navigation; jsdom has no scrolling. */
 export function stubScrolling() {
   vi.spyOn(window, "scrollTo").mockImplementation(() => undefined)
+}
+
+/** The client picker in the side nav: it decides whose work is on show and the look every piece is drawn in. Its
+ *  text is the picked client's name. */
+export const clientPicker = () => within(screen.getByRole("navigation", { name: "Client work" })).getByRole("combobox", { name: "Client" })
+
+/** Opens the client picker and chooses the client called `name`. */
+export async function pickClient(name: string) {
+  await userEvent.click(clientPicker())
+  await userEvent.click(await screen.findByRole("option", { name }))
 }

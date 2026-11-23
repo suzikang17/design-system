@@ -2,6 +2,7 @@ import { useId, type ReactNode } from "react"
 import { NavLink } from "react-router-dom"
 
 import { allMeta, GROUPS } from "@/client/catalog/registry"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { THEMES } from "@/client/tokens/contract"
 import { inChoice, useClientChoice, type ClientChoice } from "./clientChoice"
@@ -34,22 +35,22 @@ export function ClientNav() {
   return (
     <nav aria-label="Client work" className="space-y-6 text-sm">
       <div className="px-3">
-        <label htmlFor={pickerId} className="mb-1.5 block text-xs font-semibold text-foreground">
+        <span id={pickerId} className="mb-1.5 block text-xs font-semibold text-foreground">
           Client
-        </label>
-        <select
-          id={pickerId}
-          value={choice}
-          onChange={(event) => setChoice(event.target.value as ClientChoice)}
-          className="h-10 w-full rounded-md border bg-background px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-9"
-        >
-          <option value="all">All clients</option>
-          {THEMES.map((look) => (
-            <option key={look.id} value={look.id}>
-              {look.label}
-            </option>
-          ))}
-        </select>
+        </span>
+        <Select value={choice} onValueChange={(next) => setChoice(next as ClientChoice)}>
+          <SelectTrigger aria-labelledby={pickerId} className="h-10 w-full md:h-9">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All clients</SelectItem>
+            {THEMES.map((look) => (
+              <SelectItem key={look.id} value={look.id}>
+                {look.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <div className="space-y-0.5">
         <NavLink to="/client" end className={topLink}>

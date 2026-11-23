@@ -53,5 +53,5 @@ describe("catalog discovery", () => {
       }
     }
     expect(rendered).toBeGreaterThan(entries.length)
-  })
+  }, 30_000) // renders all 120 examples; the 5 s default is too short on a busy machine
 })

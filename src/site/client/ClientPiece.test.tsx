@@ -7,7 +7,7 @@ import button from "@/client/components/button/button.meta"
 import { encodeState } from "@/client/catalog/state"
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom"
 import ClientPiece from "./ClientPiece"
-import { LocationProbe, renderAt, stubRegistry, stubScrolling } from "./test-utils"
+import { clientPicker, LocationProbe, pickClient, renderAt, stubRegistry, stubScrolling } from "./test-utils"
 
 // Highlighting loads Shiki; the plain text it starts from is what these tests read.
 vi.mock("@/site/highlight", () => ({ highlight: () => new Promise<string>(() => {}) }))
@@ -25,9 +25,8 @@ afterEach(() => {
 const frame = () => screen.getByTitle("Button preview") as HTMLIFrameElement
 const where = () => screen.getByTestId("location").textContent
 const sideNav = () => within(screen.getByRole("navigation", { name: "Client work" }))
-/** The client picker in the side nav: it decides the look every piece is drawn in. */
-const picker = () => sideNav().getByRole("combobox", { name: "Client" })
-const pick = (name: string) => userEvent.selectOptions(picker(), name)
+const picker = clientPicker
+const pick = pickClient
 const statesPosted = (post: { mock: { calls: unknown[][] } }) =>
   post.mock.calls.filter(([message]) => (message as { type?: string }).type === "ds:state")
 
@@ -41,14 +40,16 @@ describe("a client piece's page", () => {
     await openButton()
     expect(screen.getByText(button.summary)).toBeInTheDocument()
     expect(frame().getAttribute("src")).toMatch(/\/client\/preview\/button\?look=urlovematters$/)
-    expect(picker()).toHaveValue("all")
+    expect(picker()).toHaveTextContent("All clients")
     expect(document.title).toBe("Button · Client work · Design System")
   })
 
   it("has no look switch of its own: the client picker is in the side nav, apart from the site's theme switch", async () => {
     await openButton()
     expect(screen.queryByRole("group", { name: "Look" })).not.toBeInTheDocument()
-    expect(within(picker()).getAllByRole("option").map((option) => option.textContent)).toEqual(["All clients", "We Curate Life", "ur love matters", "Neutral"])
+    await userEvent.click(picker())
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["All clients", "We Curate Life", "ur love matters", "Neutral"])
+    await userEvent.keyboard("{Escape}")
     expect(screen.getByRole("button", { name: /^Theme:/ })).toBeInTheDocument()
   })
 
@@ -64,20 +65,20 @@ describe("a client piece's page", () => {
     expect(origin).toBe(window.location.origin)
     await waitFor(() => expect(where()).toBe("/client/button?look=wecuratelife"))
     expect(frame().getAttribute("src")).toBe(src)
-    expect(picker()).toHaveValue("wecuratelife")
+    expect(picker()).toHaveTextContent("We Curate Life")
   })
 
   it("keeps the look and options from the address on load", async () => {
     const search = encodeState(button, { theme: "neutral", props: { ...button.defaults, variant: "outline" } })
     await openButton(`/client/button?${search}`)
     expect(frame().getAttribute("src")).toBe(`/client/preview/button?${search}`)
-    expect(picker()).toHaveValue("neutral")
+    expect(picker()).toHaveTextContent("Neutral")
     expect(screen.getByRole("radio", { name: "outline" })).toHaveAttribute("aria-checked", "true")
   })
 
   it("falls back to the home look and defaults for an unusable address (?look=bogus&p=%%%)", async () => {
     await openButton("/client/button?look=bogus&p=%%%")
-    expect(picker()).toHaveValue("all")
+    expect(picker()).toHaveTextContent("All clients")
     expect(screen.getByRole("textbox", { name: "Label" })).toHaveValue("Label")
     expect(screen.getByRole("radio", { name: "primary" })).toHaveAttribute("aria-checked", "true")
     expect(frame().getAttribute("src")).toMatch(/\?look=urlovematters$/)
@@ -130,9 +131,24 @@ describe("a client piece's page", () => {
     expect(screen.getByRole("button", { name: "Replay" })).toHaveFocus()
     await userEvent.tab()
     expect(screen.getByRole("textbox", { name: "Label" })).toHaveFocus()
-    for (const name of ["Preview", "Options", "Install", "Dependencies", "Source"]) {
-      expect(screen.getByRole("region", { name })).toBeInTheDocument()
-    }
+    for (const name of ["Preview", "Options"]) expect(screen.getByRole("region", { name })).toBeInTheDocument()
+  })
+
+  it("keeps install, dependencies and source on a Usage tab, away from the preview, which keeps its frame and edits", async () => {
+    await openButton()
+    const before = frame()
+    expect(screen.getByRole("tab", { name: "Preview" })).toHaveAttribute("aria-selected", "true")
+    for (const name of ["Install", "Dependencies", "Source"]) expect(screen.queryByRole("region", { name })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole("radio", { name: "outline" }))
+
+    await userEvent.click(screen.getByRole("tab", { name: "Usage" }))
+    for (const name of ["Install", "Source"]) expect(screen.getByRole("region", { name })).toBeInTheDocument()
+    expect(await screen.findByRole("region", { name: "Dependencies" })).toBeInTheDocument()
+    expect(screen.queryByRole("region", { name: "Options" })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole("tab", { name: "Preview" }))
+    expect(frame()).toBe(before)
+    expect(screen.getByRole("radio", { name: "outline" })).toHaveAttribute("aria-checked", "true")
   })
 
   it("a navigation to the same piece with another search resets the options and tells the frame, without reloading it; the picked client stays", async () => {
@@ -146,7 +162,7 @@ describe("a client piece's page", () => {
 
     expect(where()).toBe("/client/button")
     expect(screen.getByRole("radio", { name: "primary" })).toHaveAttribute("aria-checked", "true")
-    expect(picker()).toHaveValue("neutral")
+    expect(picker()).toHaveTextContent("Neutral")
     expect((statesPosted(post).at(-1)![0] as { search: string }).search).toBe("look=neutral")
     expect(frame()).toBe(before)
   })
@@ -155,7 +171,7 @@ describe("a client piece's page", () => {
     await openButton()
     await userEvent.click(screen.getByRole("radio", { name: "outline" }))
     await waitFor(() => expect(where()).toMatch(/look=urlovematters&p=/))
-    expect(picker()).toHaveValue("all")
+    expect(picker()).toHaveTextContent("All clients")
   })
 
   it("the picked client carries over to the next piece", async () => {
@@ -164,7 +180,7 @@ describe("a client piece's page", () => {
     await userEvent.click(sideNav().getByRole("link", { name: "Input" }))
     await screen.findByRole("heading", { level: 1, name: "Input" })
     expect((screen.getByTitle("Input preview") as HTMLIFrameElement).getAttribute("src")).toMatch(/\?look=wecuratelife$/)
-    expect(picker()).toHaveValue("wecuratelife")
+    expect(picker()).toHaveTextContent("We Curate Life")
   })
 
   it("does not mistake its own address updates for a navigation", async () => {
@@ -175,7 +191,7 @@ describe("a client piece's page", () => {
     expect(label).toHaveValue("Hello there")
     await pick("Neutral")
     expect(label).toHaveValue("Hello there")
-    expect(picker()).toHaveValue("neutral")
+    expect(picker()).toHaveTextContent("Neutral")
   })
 
   it("Back after edits on two history entries of the same piece shows the earlier entry, matching its address", async () => {
@@ -193,7 +209,7 @@ describe("a client piece's page", () => {
 
     expect(where()).toBe(first)
     // the earlier entry names its look, which becomes the pick again
-    expect(picker()).toHaveValue("urlovematters")
+    expect(picker()).toHaveTextContent("ur love matters")
     expect(screen.getByRole("radio", { name: "outline" })).toHaveAttribute("aria-checked", "true")
   })
 
@@ -201,6 +217,7 @@ describe("a client piece's page", () => {
     const fetchMock = stubRegistry()
     renderAt("/client/select")
     await screen.findByRole("heading", { level: 1, name: "Select" })
+    await userEvent.click(screen.getByRole("tab", { name: "Usage" }))
     expect(screen.getByText(`pnpm dlx shadcn@latest add ${window.location.origin}/r/client-select.json`)).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith("/r/client-select.json")
     const deps = within(await screen.findByRole("region", { name: "Dependencies" }))
@@ -313,7 +330,7 @@ describe("the address while editing", () => {
     await userEvent.click(screen.getByRole("button", { name: "History back" }))
     await new Promise((resolve) => setTimeout(resolve, 400))
     expect(where()).toBe("/client/button?look=wecuratelife")
-    expect(picker()).toHaveValue("wecuratelife")
+    expect(picker()).toHaveTextContent("We Curate Life")
   })
 })
 

@@ -211,6 +211,8 @@ test("the site's Midnight theme does not leak into a piece: the preview wears it
 
 test("a nested look root overrides the outer look tokens", async ({ page }) => {
   await page.goto("client/styles/colour")
+  // the page (and with it the looks' stylesheet) loads lazily: wait for it before reading tokens
+  await expect(page.locator("[data-look-column]").first()).toBeVisible()
   // neutral has a 6px button radius and urlovematters has 0, so only a real override can read 0 inside.
   const radius = await page.evaluate(() => {
     document.body.insertAdjacentHTML(

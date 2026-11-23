@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { MemoryRouter } from "react-router-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { LocationProbe } from "./test-utils"
+import { clientPicker, LocationProbe, pickClient } from "./test-utils"
 
 // Stand-in pieces, so the filters can be tried on groups and origins the real ten do not cover.
 vi.mock("@/client/catalog/registry", async () => {
@@ -50,7 +50,7 @@ const renderAt = (path = "/client") =>
 
 const cards = () => within(screen.queryByRole("list", { name: "Pieces" }) ?? document.createElement("ul")).queryAllByRole("listitem")
 const nav = () => within(screen.getByRole("navigation", { name: "Client work" }))
-const picker = () => nav().getByRole("combobox", { name: "Client" })
+const picker = clientPicker
 const looks = () => Array.from(document.querySelectorAll("[data-card-view] > .ds-root")).map((root) => root.getAttribute("data-theme"))
 const navPieces = () => ["Alpha", "Beta", "Gamma"].filter((name) => nav().queryByRole("link", { name }))
 const names = () => cards().map((card) => within(card).getByRole("link").textContent)
@@ -77,22 +77,22 @@ describe("the client work index", () => {
   it("the client picker in the side nav keeps to that client's pieces, in the cards and the nav's lists, drawn in its look", async () => {
     renderAt()
     expect(screen.queryByRole("group", { name: "From" })).not.toBeInTheDocument()
-    expect(picker()).toHaveValue("all")
+    expect(picker()).toHaveTextContent("All clients")
     expect(looks()).toEqual(["neutral", "neutral", "neutral"]) // each stand-in's own home look
-    await userEvent.selectOptions(picker(), "We Curate Life")
+    await pickClient("We Curate Life")
     expect(names()).toEqual(["Alpha", "Gamma"])
     expect(navPieces()).toEqual(["Alpha", "Gamma"])
     expect(looks()).toEqual(["wecuratelife", "wecuratelife"])
-    await userEvent.selectOptions(picker(), "ur love matters")
+    await pickClient("ur love matters")
     expect(names()).toEqual(["Alpha", "Beta"])
     expect(looks()).toEqual(["urlovematters", "urlovematters"])
-    await userEvent.selectOptions(picker(), "All clients")
+    await pickClient("All clients")
     expect(names()).toEqual(["Alpha", "Beta", "Gamma"])
   })
 
   it("Neutral is no client's own look: it shows every piece, unbranded", async () => {
     renderAt()
-    await userEvent.selectOptions(picker(), "Neutral")
+    await pickClient("Neutral")
     expect(names()).toEqual(["Alpha", "Beta", "Gamma"])
     expect(looks()).toEqual(["neutral", "neutral", "neutral"])
   })
@@ -100,18 +100,18 @@ describe("the client work index", () => {
   it("a link that names a look opens with that client picked; a link without one starts at All clients", () => {
     window.history.replaceState(null, "", "/client?look=wecuratelife")
     const { unmount } = renderAt("/client?look=wecuratelife")
-    expect(picker()).toHaveValue("wecuratelife")
+    expect(picker()).toHaveTextContent("We Curate Life")
     unmount()
     window.history.replaceState(null, "", "/client")
     renderAt()
-    expect(picker()).toHaveValue("all")
+    expect(picker()).toHaveTextContent("All clients")
   })
 
   it("filters by group, and combines the two filters", async () => {
     renderAt()
     await userEvent.click(within(screen.getByRole("group", { name: "Group" })).getByRole("button", { name: "Primitives" }))
     expect(names()).toEqual(["Alpha", "Beta"])
-    await userEvent.selectOptions(picker(), "We Curate Life")
+    await pickClient("We Curate Life")
     expect(names()).toEqual(["Alpha"])
     expect(screen.getByTestId("location").textContent).toBe("/client?group=primitives")
     await userEvent.click(within(screen.getByRole("group", { name: "Group" })).getByRole("button", { name: "All" }))

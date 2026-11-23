@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import button from "@/client/components/button/button.meta"
 import { encodeState } from "@/client/catalog/state"
 import { App } from "../App"
-import { LocationProbe, stubRegistry, stubScrolling } from "./test-utils"
+import { LocationProbe, pickClient, stubRegistry, stubScrolling } from "./test-utils"
 
 vi.mock("@/site/highlight", () => ({ highlight: () => new Promise<string>(() => {}) }))
 
@@ -43,12 +43,12 @@ describe("the site's ?theme= beside a piece's look", () => {
     await waitFor(() => expect(window.location.search).toBe(`?${search}`))
     await waitFor(() => expect(screen.getByTestId("location").textContent).toBe(`/client/button?${search}`))
     const picker = within(screen.getByRole("navigation", { name: "Client work" })).getByRole("combobox", { name: "Client" })
-    expect(picker).toHaveValue("wecuratelife")
+    expect(picker).toHaveTextContent("We Curate Life")
     expect(screen.getByRole("radio", { name: "outline" })).toHaveAttribute("aria-checked", "true")
     expect((screen.getByTitle("Button preview") as HTMLIFrameElement).getAttribute("src")).toBe(`/client/preview/button?${search}`)
 
     // An edit afterwards does not bring theme back.
-    await userEvent.selectOptions(picker, "Neutral")
+    await pickClient("Neutral")
     // The address follows an edit after a short quiet time.
     await waitFor(() => expect(window.location.search).toContain("look=neutral"))
     expect(window.location.search).not.toContain("theme=")

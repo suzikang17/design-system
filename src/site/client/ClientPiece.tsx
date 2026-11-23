@@ -12,6 +12,7 @@ import { Dependencies, Section } from "../DetailSections"
 import { useLoaded } from "../useLoaded"
 import { useTitle } from "../useTitle"
 import { isThemeId } from "@/client/tokens/contract"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useClientChoice } from "./clientChoice"
 import ClientNotFound from "./ClientNotFound"
 import { clientItemPage, installCommand, pieceTitle } from "./model"
@@ -64,6 +65,7 @@ function Piece({ meta }: { meta: AnyMeta }) {
     return namedLook(location.search) || choice === "all" ? decoded : { ...decoded, theme: choice }
   })
   const [size, setSize] = useState<PreviewSize>("desktop")
+  const [tab, setTab] = useState("preview")
   const search = encodeState(meta, state)
 
   // The address mirrors the state, but is written at most once per ADDRESS_DELAY after the last edit: Safari throws
@@ -164,7 +166,15 @@ function Piece({ meta }: { meta: AnyMeta }) {
         {meta.seenOn && <SeenOn url={meta.seenOn} />}
       </div>
 
-      <section aria-labelledby="preview" className="mt-10">
+      {/* Most visitors are not developers: how to install a piece, and its code, sit on a tab of their own. The
+          preview tab stays mounted while hidden, so its frame and the options keep their state. */}
+      <Tabs value={tab} onValueChange={setTab} className="mt-8">
+        <TabsList>
+          <TabsTrigger value="preview">Preview</TabsTrigger>
+          <TabsTrigger value="usage">Usage</TabsTrigger>
+        </TabsList>
+        <TabsContent value="preview" forceMount hidden={tab !== "preview"} className="mt-0">
+      <section aria-labelledby="preview" className="mt-6">
         <h2 id="preview" className="sr-only">
           Preview
         </h2>
@@ -177,12 +187,8 @@ function Piece({ meta }: { meta: AnyMeta }) {
         <Controls meta={meta} props={state.props} onChange={(props) => update({ ...state, props })} />
       </Section>
 
-      {/* Most visitors are not developers: how to install a piece, and its code, stay folded away. */}
-      <details className="group/dev mt-14 max-w-4xl rounded-lg border bg-card/50">
-        <summary className="cursor-pointer select-none rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          For developers: install and source
-        </summary>
-        <div className="px-4 pb-6">
+        </TabsContent>
+        <TabsContent value="usage" className="mt-0 max-w-4xl">
         <Section id="install" title="Install">
           <div className="flex items-center gap-2 rounded-lg border bg-card py-1 pl-4 pr-1">
             <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap py-2 font-mono text-[13px]">{command}</code>
@@ -208,8 +214,8 @@ function Piece({ meta }: { meta: AnyMeta }) {
             ))}
           </div>
         </Section>
-        </div>
-      </details>
+        </TabsContent>
+      </Tabs>
     </article>
   )
 }
