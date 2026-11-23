@@ -1,10 +1,13 @@
-import { screen, within } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { useEffect, useState } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import button from "@/client/components/button/button.meta"
 import { encodeState } from "@/client/catalog/state"
-import { renderAt, stubRegistry, stubScrolling } from "./test-utils"
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom"
+import ClientPiece from "./ClientPiece"
+import { LocationProbe, renderAt, stubRegistry, stubScrolling } from "./test-utils"
 
 // Highlighting loads Shiki; the plain text it starts from is what these tests read.
 vi.mock("@/site/highlight", () => ({ highlight: () => new Promise<string>(() => {}) }))
@@ -56,7 +59,7 @@ describe("a client piece's page", () => {
     const [message, origin] = statesPosted(post).at(-1)!
     expect((message as { search: string }).search).toBe("look=wecuratelife")
     expect(origin).toBe(window.location.origin)
-    expect(where()).toBe("/client/button?look=wecuratelife")
+    await waitFor(() => expect(where()).toBe("/client/button?look=wecuratelife"))
     expect(frame().getAttribute("src")).toBe(src)
     expect(lookButton("We Curate Life")).toHaveAttribute("aria-pressed", "true")
   })
@@ -87,8 +90,8 @@ describe("a client piece's page", () => {
     await userEvent.click(screen.getByRole("radio", { name: "outline" }))
 
     const expected = encodeState(button, { theme: "urlovematters", props: { ...button.defaults, variant: "outline" } })
-    expect(where()).toBe(`/client/button?${expected}`)
     expect((statesPosted(post).at(-1)![0] as { search: string }).search).toBe(expected)
+    await waitFor(() => expect(where()).toBe(`/client/button?${expected}`))
     // Back leaves the page: the edit did not push an entry of its own.
     await userEvent.click(screen.getByRole("button", { name: "History back" }))
     expect(where()).toBe("/client")
@@ -160,13 +163,13 @@ describe("a client piece's page", () => {
   it("Back after edits on two history entries of the same piece shows the earlier entry, matching its address", async () => {
     await openButton()
     await userEvent.click(screen.getByRole("radio", { name: "outline" }))
+    await waitFor(() => expect(where()).toMatch(/look=urlovematters&p=/))
     const first = where()
-    expect(first).toMatch(/look=urlovematters&p=/)
     // A pushed navigation to the same piece, then an edit there.
     await userEvent.click(sideNav().getByRole("link", { name: "Button" }))
     expect(where()).toBe("/client/button")
     await userEvent.click(lookButton("Neutral"))
-    expect(where()).toBe("/client/button?look=neutral")
+    await waitFor(() => expect(where()).toBe("/client/button?look=neutral"))
 
     await userEvent.click(screen.getByRole("button", { name: "History back" }))
 
@@ -204,12 +207,111 @@ describe("a client piece's page", () => {
   })
 })
 
+describe("the address while editing", () => {
+  const outline = () => screen.getByRole("radio", { name: "outline" })
+
+  it("30 rapid edits make a few navigations at most, and the final address matches the final state", async () => {
+    const keys: string[] = []
+    function Recorder() {
+      const { key } = useLocation()
+      useEffect(() => {
+        keys.push(key)
+      }, [key])
+      return null
+    }
+    render(
+      <MemoryRouter initialEntries={["/client/button"]}>
+        <Routes>
+          <Route path="/client/:id" element={<ClientPiece />} />
+        </Routes>
+        <Recorder />
+        <LocationProbe />
+      </MemoryRouter>,
+    )
+    await screen.findByRole("heading", { level: 1, name: "Button" })
+    const label = screen.getByRole("textbox", { name: "Label" })
+    const post = vi.spyOn(frame().contentWindow!, "postMessage")
+    const before = keys.length
+    await userEvent.clear(label)
+    await userEvent.type(label, "a".repeat(30), { delay: null })
+
+    // State and the frame are immediate; the address waits for a quiet moment.
+    const final = encodeState(button, { theme: "urlovematters", props: { ...button.defaults, children: "a".repeat(30) } })
+    expect(label).toHaveValue("a".repeat(30))
+    expect((statesPosted(post).at(-1)![0] as { search: string }).search).toBe(final)
+    expect(statesPosted(post).length).toBeGreaterThanOrEqual(30)
+
+    await waitFor(() => expect(where()).toBe(`/client/button?${final}`))
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(where()).toBe(`/client/button?${final}`)
+    expect(keys.length - before).toBeLessThanOrEqual(3)
+    expect(label).toHaveValue("a".repeat(30))
+  })
+
+  it("writes a pending edit when the page unmounts at the same address", async () => {
+    function Gate() {
+      const [shown, setShown] = useState(true)
+      return (
+        <>
+          <button type="button" onClick={() => setShown(false)}>
+            Hide piece
+          </button>
+          {shown && <ClientPiece />}
+        </>
+      )
+    }
+    render(
+      <MemoryRouter initialEntries={["/client/button"]}>
+        <Routes>
+          <Route path="/client/:id" element={<Gate />} />
+        </Routes>
+        <LocationProbe />
+      </MemoryRouter>,
+    )
+    await screen.findByRole("heading", { level: 1, name: "Button" })
+    await userEvent.click(outline())
+    expect(where()).toBe("/client/button")
+    await userEvent.click(screen.getByRole("button", { name: "Hide piece" }))
+    const expected = encodeState(button, { theme: "urlovematters", props: { ...button.defaults, variant: "outline" } })
+    await waitFor(() => expect(where()).toBe(`/client/button?${expected}`))
+  })
+
+  it("writes a pending edit before a link moves on, so Back returns to the edited address", async () => {
+    await openButton()
+    await userEvent.click(outline())
+    // No wait: the 200 ms delay has not passed when the link is clicked.
+    await userEvent.click(sideNav().getByRole("link", { name: "TextLink" }))
+    await screen.findByRole("heading", { level: 1, name: "TextLink" })
+    await userEvent.click(screen.getByRole("button", { name: "History back" }))
+    const expected = encodeState(button, { theme: "urlovematters", props: { ...button.defaults, variant: "outline" } })
+    await waitFor(() => expect(where()).toBe(`/client/button?${expected}`))
+    expect(outline()).toHaveAttribute("aria-checked", "true")
+  })
+
+  it("a Back after an edit lands on the earlier address and nothing writes over it", async () => {
+    await openButton("/client/button?look=wecuratelife")
+    await userEvent.click(sideNav().getByRole("link", { name: "Button" }))
+    await userEvent.click(lookButton("Neutral"))
+    await userEvent.click(screen.getByRole("button", { name: "History back" }))
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(where()).toBe("/client/button?look=wecuratelife")
+    expect(lookButton("We Curate Life")).toHaveAttribute("aria-pressed", "true")
+  })
+})
+
 describe("client work navigation", () => {
   it("the header links to Client work beside Components", async () => {
     renderAt("/")
     const site = within(screen.getByRole("navigation", { name: "Site" }))
     expect(site.getAllByRole("link").map((link) => link.textContent)).toEqual(expect.arrayContaining(["Components", "Client work"]))
     expect(site.getByRole("link", { name: "Client work" })).toHaveAttribute("href", "/client")
+  })
+
+  it("the footer links to Client work beside Components", async () => {
+    renderAt("/")
+    const footer = within(screen.getByRole("contentinfo"))
+    expect(footer.getByRole("link", { name: "Client work" })).toHaveAttribute("href", "/client")
+    expect(footer.getByRole("link", { name: "Components" })).toHaveAttribute("href", "/components")
   })
 
   it("the side nav lists the pages, the styles and the pieces", async () => {

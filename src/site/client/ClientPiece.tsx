@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react"
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom"
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
+import { Link, UNSAFE_NavigationContext, useLocation, useNavigate, useParams } from "react-router-dom"
 import { ExternalLink } from "lucide-react"
 
 import { publishedDependencies } from "@/catalog"
@@ -23,6 +23,9 @@ const sources = import.meta.glob<string>(
   ["/src/client/components/**/*.{tsx,css}", "!/src/client/components/**/*.test.tsx"],
   { query: "?raw", import: "default" },
 )
+
+/** Quiet time after the last edit before the address is written. */
+const ADDRESS_DELAY = 200
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- a meta of any piece, as in the registry
 type AnyMeta = ComponentMeta<any>
@@ -52,17 +55,60 @@ function Piece({ meta }: { meta: AnyMeta }) {
   const [size, setSize] = useState<PreviewSize>("desktop")
   const search = encodeState(meta, state)
 
+  // The address mirrors the state, but is written at most once per ADDRESS_DELAY after the last edit: Safari throws
+  // after 100 replaceState calls in 10 seconds, and a slider or a keystroke makes more. State and the message to the
+  // frame are not delayed. `pending` holds the search to write; `written` is the last search this page wrote.
+  const { navigator } = useContext(UNSAFE_NavigationContext)
+  const here = useRef({ pathname: location.pathname, search: location.search, navigate, navigator })
+  here.current = { pathname: location.pathname, search: location.search, navigate, navigator }
+  const pending = useRef<{ search: string; timer: ReturnType<typeof setTimeout> } | null>(null)
+  const written = useRef(location.search.replace(/^\?/, ""))
+
+  const flush = useCallback(() => {
+    const entry = pending.current
+    if (!entry) return
+    clearTimeout(entry.timer)
+    pending.current = null
+    const now = here.current
+    // Only while this page is still the current address: a Back, Forward or link that already moved on wins.
+    const live = (now.navigator as { location?: { pathname: string; search: string } }).location
+    if (live && (live.pathname !== now.pathname || live.search !== now.search)) return
+    if (entry.search === now.search.replace(/^\?/, "")) return
+    written.current = entry.search
+    now.navigate({ pathname: now.pathname, search: `?${entry.search}` }, { replace: true })
+  }, [])
+
   const update = (next: PreviewState) => {
     setState(next)
-    navigate({ pathname: location.pathname, search: `?${encodeState(meta, next)}` }, { replace: true })
+    const nextSearch = encodeState(meta, next)
+    if (pending.current) clearTimeout(pending.current.timer)
+    pending.current = { search: nextSearch, timer: setTimeout(flush, ADDRESS_DELAY) }
   }
+
+  // While a write waits, any click (a nav link, the header) and leaving the page write it first, so the history entry
+  // being left carries the final state; an unmount does the same when the address has not moved on.
+  useEffect(() => {
+    const onClick = () => flush()
+    document.addEventListener("click", onClick, true)
+    window.addEventListener("pagehide", flush)
+    return () => {
+      document.removeEventListener("click", onClick, true)
+      window.removeEventListener("pagehide", flush)
+      flush()
+    }
+  }, [flush])
 
   // On every new location, a search that differs from the encoded local state came from a navigation (a nav
   // link, Back or Forward) rather than from `update`, and wins. The re-derived state re-encodes into `search`,
   // which the frame is sent. Comparing searches, rather than marking history entries, keeps the fields and the
-  // address in agreement whichever entry Back lands on.
+  // address in agreement whichever entry Back lands on. A write still waiting is dropped: the navigation is newer.
   useEffect(() => {
-    if (location.search.replace(/^\?/, "") !== search) setState(decodeState(meta, location.search))
+    const now = location.search.replace(/^\?/, "")
+    if (now === written.current || now === search) return
+    if (pending.current) clearTimeout(pending.current.timer)
+    pending.current = null
+    written.current = now
+    setState(decodeState(meta, location.search))
     // Only a new location may reset the state; `search` changes with every edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key])

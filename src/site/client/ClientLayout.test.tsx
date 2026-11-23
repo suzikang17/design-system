@@ -49,8 +49,9 @@ describe("the site's ?theme= beside a piece's look", () => {
 
     // An edit afterwards does not bring theme back.
     await userEvent.click(look.getByRole("button", { name: "Neutral" }))
+    // The address follows an edit after a short quiet time.
+    await waitFor(() => expect(window.location.search).toContain("look=neutral"))
     expect(window.location.search).not.toContain("theme=")
-    expect(window.location.search).toContain("look=neutral")
   })
 
   it("an index filter chosen after the site drops theme does not bring it back", async () => {
