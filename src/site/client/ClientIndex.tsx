@@ -3,7 +3,7 @@ import "@/client/tokens/all.css"
 import { useId } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 
-import type { ComponentMeta, Group, Origin } from "@/client/catalog/meta"
+import type { ComponentMeta, Group } from "@/client/catalog/meta"
 import { allMeta, GROUPS } from "@/client/catalog/registry"
 import { filterPillClass } from "@/components/ui/filter-pill"
 import { useTitle } from "../useTitle"
@@ -19,14 +19,14 @@ type AnyMeta = ComponentMeta<any>
 export default function ClientIndex() {
   useTitle("Client work")
   const [params, setParams] = useSearchParams()
-  // An unknown value in the address means "All".
+  // An unknown value in the address means "All". `from` is set by the client picker in the side nav.
   const group = GROUPS.find((g) => g.id === params.get("group"))?.id
   const from = ORIGINS.find((o) => o.id === params.get("from"))?.id
   const shown = allMeta.filter((meta) => (!group || meta.group === group) && (!from || meta.origin.includes(from)))
   // Only groups that hold a piece get a pill; a link may still name an empty one.
   const groups = GROUPS.filter((g) => allMeta.some((meta) => meta.group === g.id))
 
-  const choose = (key: "group" | "from", value: string | undefined) => {
+  const choose = (key: "group", value: string | undefined) => {
     const next = new URLSearchParams(params)
     if (value) next.set(key, value)
     else next.delete(key)
@@ -45,7 +45,6 @@ export default function ClientIndex() {
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-x-8">
         <Filter<Group> label="Group" value={group} options={groups.map((g) => ({ id: g.id, label: g.label }))} onChange={(v) => choose("group", v)} />
-        <Filter<Origin> label="From" value={from} options={ORIGINS} onChange={(v) => choose("from", v)} />
       </div>
 
       {shown.length > 0 ? (

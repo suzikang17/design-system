@@ -38,8 +38,8 @@ describe('client pieces on React 18', () => {
     expect(version).toMatch(/^18\./)
   })
 
-  it('finds all ten pieces', () => {
-    expect(allMeta).toHaveLength(10)
+  it('finds all eleven pieces', () => {
+    expect(allMeta).toHaveLength(11)
   })
 
   it.each(allMeta.map((m) => [m.id, m] as const))('%s with its defaults', (_id, m) => {

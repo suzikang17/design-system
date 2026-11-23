@@ -8,7 +8,7 @@ const FETCH_PRIORITY_PROP = Number(version.split('.')[0]) >= 19 ? 'fetchPriority
 export type Img = { src: string; alt: string; width: number; height: number; srcSet?: string }
 
 export type PhotoFrame = 'plain' | 'print' | 'mat' | 'cameo' | 'arch'
-export type PhotoRatio = '3/4' | '1/1' | '3/2' | 'auto'
+export type PhotoRatio = '3/4' | '4/5' | '1/1' | '3/2' | 'auto'
 
 export type PhotoProps = {
   image: Img

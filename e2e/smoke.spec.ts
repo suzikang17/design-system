@@ -52,8 +52,13 @@ async function settle(page: Page) {
   await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => undefined)
 }
 
-/** Every image inside `scope` has loaded (a broken or still-pending image has no natural width). */
+/** Every image inside `scope` has loaded (a broken or still-pending image has no natural width). A lazy image
+ *  below the fold does not load until it is near the screen, so each one is scrolled to first; the page is put
+ *  back at the top afterwards. */
 async function expectImagesLoaded(scope: Locator) {
+  const images = scope.locator("img")
+  for (let i = 0, n = await images.count(); i < n; i++) await images.nth(i).scrollIntoViewIfNeeded()
+  await scope.page().evaluate(() => window.scrollTo(0, 0))
   await expect
     .poll(() => scope.evaluate((el) => Array.from(el.querySelectorAll("img")).every((img) => img.complete && img.naturalWidth > 0)))
     .toBe(true)

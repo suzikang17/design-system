@@ -34,23 +34,27 @@ vi.mock("@/client/catalog/registry", async () => {
 })
 
 const { default: ClientIndex } = await import("./ClientIndex")
+const { ClientNav } = await import("./ClientNav")
 
 const renderAt = (path = "/client") =>
   render(
     <MemoryRouter initialEntries={[path]}>
+      <ClientNav />
       <ClientIndex />
       <LocationProbe />
     </MemoryRouter>,
   )
 
 const cards = () => within(screen.queryByRole("list", { name: "Pieces" }) ?? document.createElement("ul")).queryAllByRole("listitem")
+const nav = () => within(screen.getByRole("navigation", { name: "Client work" }))
+const navPieces = () => ["Alpha", "Beta", "Gamma"].filter((name) => nav().queryByRole("link", { name }))
 const names = () => cards().map((card) => within(card).getByRole("link").textContent)
 
 describe("the client work index", () => {
   it("shows one card per piece: the name links to its page, the live piece beside it is out of reach", () => {
     renderAt()
     expect(cards()).toHaveLength(3)
-    const link = screen.getByRole("link", { name: "Alpha" })
+    const link = within(screen.getByRole("list", { name: "Pieces" })).getByRole("link", { name: "Alpha" })
     expect(link).toHaveAttribute("href", "/client/alpha")
     expect(link).toHaveAccessibleDescription("Alpha summary")
     const view = cards()[0]!.querySelector("[data-card-view]") as HTMLElement
@@ -63,20 +67,26 @@ describe("the client work index", () => {
     expect(screen.queryByRole("button", { name: "Alpha" })).not.toBeInTheDocument()
   })
 
-  it("filters by the site a piece came from, and writes it to the address", async () => {
+  it("the client picker in the side nav filters the cards and the nav's own lists, and writes it to the address", async () => {
     renderAt()
-    const from = within(screen.getByRole("group", { name: "From" }))
-    await userEvent.click(from.getByRole("button", { name: "We Curate Life" }))
+    expect(screen.queryByRole("group", { name: "From" })).not.toBeInTheDocument()
+    expect(nav().getByRole("link", { name: "All clients" })).toHaveAttribute("aria-current", "true")
+    await userEvent.click(nav().getByRole("link", { name: "We Curate Life" }))
     expect(names()).toEqual(["Alpha", "Gamma"])
-    expect(from.getByRole("button", { name: "We Curate Life" })).toHaveAttribute("aria-pressed", "true")
+    expect(navPieces()).toEqual(["Alpha", "Gamma"])
+    expect(nav().getByRole("link", { name: "We Curate Life" })).toHaveAttribute("aria-current", "true")
+    expect(nav().getByRole("link", { name: "All clients" })).not.toHaveAttribute("aria-current")
     expect(screen.getByTestId("location").textContent).toBe("/client?from=wecuratelife")
+    await userEvent.click(nav().getByRole("link", { name: "All clients" }))
+    expect(names()).toEqual(["Alpha", "Beta", "Gamma"])
+    expect(screen.getByTestId("location").textContent).toBe("/client")
   })
 
   it("filters by group, and combines the two filters", async () => {
     renderAt()
     await userEvent.click(within(screen.getByRole("group", { name: "Group" })).getByRole("button", { name: "Primitives" }))
     expect(names()).toEqual(["Alpha", "Beta"])
-    await userEvent.click(within(screen.getByRole("group", { name: "From" })).getByRole("button", { name: "We Curate Life" }))
+    await userEvent.click(nav().getByRole("link", { name: "We Curate Life" }))
     expect(names()).toEqual(["Alpha"])
     expect(screen.getByTestId("location").textContent).toBe("/client?group=primitives&from=wecuratelife")
     await userEvent.click(within(screen.getByRole("group", { name: "Group" })).getByRole("button", { name: "All" }))
