@@ -130,22 +130,16 @@ describe("classifyImports", () => {
 
 describe("resolveHomepage", () => {
   it("prefers SITE_URL and drops a trailing slash", () => {
-    expect(resolveHomepage({ SITE_URL: "https://ds.example.com/", VERCEL: "1", VERCEL_URL: "x.vercel.app" })).toBe("https://ds.example.com")
+    expect(resolveHomepage({ SITE_URL: "https://ds.example.com/", CI: "true" })).toBe("https://ds.example.com")
   })
 
-  it("uses the production domain for a production build on Vercel", () => {
-    const env = { VERCEL: "1", VERCEL_ENV: "production", VERCEL_PROJECT_PRODUCTION_URL: "ds.example.com", VERCEL_URL: "ds-abc123.vercel.app" }
-    expect(resolveHomepage(env)).toBe("https://ds.example.com")
-  })
-
-  it("uses the deployment's own URL for a preview, so its items come from that preview", () => {
-    const env = { VERCEL: "1", VERCEL_ENV: "preview", VERCEL_PROJECT_PRODUCTION_URL: "ds.example.com", VERCEL_URL: "ds-abc123.vercel.app" }
-    expect(resolveHomepage(env)).toBe("https://ds-abc123.vercel.app")
-  })
-
-  it("fails a CI or Vercel build that has no address", () => {
+  it("fails a CI or Cloudflare Workers Builds build that has no address", () => {
     expect(() => resolveHomepage({ CI: "true" })).toThrow(/SITE_URL/)
-    expect(() => resolveHomepage({ VERCEL: "1", VERCEL_ENV: "production" })).toThrow(/SITE_URL/)
+    expect(() => resolveHomepage({ WORKERS_CI: "1", WORKERS_CI_BRANCH: "main" })).toThrow(/SITE_URL/)
+  })
+
+  it("ignores the old Vercel variables", () => {
+    expect(resolveHomepage({ VERCEL: "1", VERCEL_URL: "x.vercel.app" })).toBe("http://localhost:4173")
   })
 
   it("falls back to localhost on the script's port", () => {

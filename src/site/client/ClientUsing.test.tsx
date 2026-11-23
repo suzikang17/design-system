@@ -12,7 +12,7 @@ import { CLIENT_PIECES, COMPONENTS_JSON } from "./using"
 vi.mock("@/site/highlight", () => ({ highlight: () => new Promise<string>(() => {}) }))
 
 const read = (file: string) => readFileSync(join(import.meta.dirname, "..", "..", "..", file), "utf8")
-const add = (item: string) => `npx shadcn@latest add ${window.location.origin}/r/${item}.json`
+const add = (item: string) => `pnpm dlx shadcn@latest add ${window.location.origin}/r/${item}.json`
 
 beforeEach(stubScrolling)
 afterEach(() => vi.restoreAllMocks())

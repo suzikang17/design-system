@@ -16,6 +16,7 @@
     "gen:registry": "tsx scripts/gen-registry.ts",
     "build:registry": "shadcn build registry.json --output public/r",
     "registry": "pnpm gen:registry && pnpm build:registry",
+    "deploy:preview": "pnpm build && wrangler deploy",
     "new": "tsx scripts/new-component.ts"
   },
   "dependencies": {

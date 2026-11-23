@@ -180,7 +180,7 @@ describe("a client piece's page", () => {
     const fetchMock = stubRegistry()
     renderAt("/client/select")
     await screen.findByRole("heading", { level: 1, name: "Select" })
-    expect(screen.getByText(`npx shadcn@latest add ${window.location.origin}/r/client-select.json`)).toBeInTheDocument()
+    expect(screen.getByText(`pnpm dlx shadcn@latest add ${window.location.origin}/r/client-select.json`)).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith("/r/client-select.json")
     const deps = within(await screen.findByRole("region", { name: "Dependencies" }))
     expect(deps.getByRole("link", { name: "client-input" })).toHaveAttribute("href", "/client/input")

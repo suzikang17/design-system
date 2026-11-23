@@ -117,20 +117,15 @@ export function classifyImports(specifiers: string[], self?: string): ImportDeps
 }
 
 /**
- * The site's public address, which item dependencies point at: SITE_URL;
- * on Vercel the production domain for production builds and the
- * deployment's own URL for previews, so a preview's items come from that
- * preview; locally http://localhost:<port>. A CI or Vercel build with no
- * address fails, rather than publish items that point somewhere else.
+ * The site's public address, which item dependencies point at: SITE_URL, or
+ * locally http://localhost:<port>. A CI build (CI, or WORKERS_CI on Cloudflare
+ * Workers Builds) with no address fails, rather than publish items that point
+ * somewhere else.
  */
 export function resolveHomepage(env: Record<string, string | undefined>, localPort = 4173): string {
-  let url = env.SITE_URL
-  if (!url && env.VERCEL) {
-    const host = env.VERCEL_ENV === "production" ? env.VERCEL_PROJECT_PRODUCTION_URL : env.VERCEL_URL
-    if (host) url = `https://${host}`
-  }
+  const url = env.SITE_URL
   if (url) return url.replace(/\/+$/, "")
-  if (env.CI || env.VERCEL) {
+  if (env.CI || env.WORKERS_CI) {
     throw new Error(
       "registry.json: no public address for the registry. Set SITE_URL to the site's address, for example https://design.example.com.",
     )

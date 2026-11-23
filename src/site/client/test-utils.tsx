@@ -49,7 +49,7 @@ function publishedItem(url: string) {
 export function stubRegistry() {
   const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
     const item = publishedItem(String(input))
-    return { ok: Boolean(item), status: item ? 200 : 404, json: async () => item }
+    return { ok: Boolean(item), status: item ? 200 : 404, headers: new Headers({ "content-type": "application/json" }), json: async () => item }
   })
   vi.stubGlobal("fetch", fetchMock)
   return fetchMock

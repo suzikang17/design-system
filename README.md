@@ -3,7 +3,7 @@
 React components, themes and tokens. The repo publishes them as a shadcn registry and shows them on a catalog site.
 
 - Stack: React 18, TypeScript, Vite 7, Tailwind CSS 3.4, Radix UI, shadcn conventions.
-- Components live in `src/components/ui`, themes in `src/styles/themes`, the site in `src/site`.
+- Components live in `src/components/ui`, themes in `src/styles/themes`, the site in `src/site`. The client work lives in `src/client` (see Client work).
 
 ## Commands
 
@@ -11,6 +11,7 @@ React components, themes and tokens. The repo publishes them as a shadcn registr
 pnpm install
 pnpm dev            # build the registry for http://localhost:5173, then serve the site with live examples
 pnpm build          # build the registry, then dist/ (vite build)
+pnpm deploy:preview # build, then deploy to Cloudflare workers.dev (see Hosting)
 pnpm preview        # serve dist/ on http://localhost:4173
 pnpm registry       # registry.json (gen:registry), then public/r/*.json (build:registry)
 pnpm test           # vitest
@@ -29,6 +30,18 @@ pnpm new <name>     # scaffold a component and its showcase
 `pnpm e2e` builds the site, serves it on port 4317 and runs the Playwright suites in `e2e/` at 1280x800 and 390x844: every page type loads without console errors or sideways overflow, the client pieces render in all three looks, and rendered details (heights, paddings, reduced motion, focus) are measured. The first time on a machine, install the browser: `pnpm exec playwright install --with-deps chromium`.
 
 `e2e/compare-shots.mjs` (`pnpm e2e:compare`, with the site served on port 4317) takes screenshots of the client pieces from this site and compares them with reference screenshots from the standalone build, which are kept outside the repo (`.superpowers/ref/plan1-shots`, or set `REF_DIR`). It allows a difference of 2 in each colour channel, reports the share of differing pixels per shot, writes diff images to `e2e/shots/compare/`, and fails when a shot differs by more than 1% of its pixels.
+
+## Client work
+
+Ten plain-CSS pieces ported from client sites live in `src/client/`, apart from the Tailwind components: `components/<id>/` for the pieces, `tokens/` for the token contract, `base.css` and the three looks, `hooks/` for the shared hooks, `catalog/` for the metas and link state. The site shows them under `/client`, and the registry publishes them as `client-<id>`, `client-base` and `client-look-<id>`. `docs/CONVENTIONS.md` has the rules.
+
+### Add a client piece
+
+1. Make `src/client/components/<id>/` with `<Name>.tsx`, `<id>.css`, `<id>.meta.ts` and `<id>.test.tsx`. Follow `src/client/components/button/`.
+2. Fill in the meta. Its `id`, `name`, `summary`, `files`, `dependencies` and `registryDependencies` are plain literals, because the registry reads the file as text.
+3. Write the tests (`docs/CONVENTIONS.md` lists them) and run `pnpm test`.
+
+The piece's page (`/client/<id>`), its card on the client index, its entry on the Using page and its registry item `client-<id>` are all generated from the meta. Do not edit `registry.json` or `public/r/`. Run `pnpm verify` before committing: it also checks every piece in every look in a real browser.
 
 ## Add a component
 
@@ -118,20 +131,21 @@ The components expect Tailwind CSS 3.4 and HSL channel tokens such as `--primary
 
 Four packages have a version range, because the code needs that major version: `react-day-picker` 8, `recharts` 2, `@tanstack/react-table` 8 and `react-resizable-panels` 2. `react-day-picker` 8 declares `date-fns` 2 or 3 as a peer. With `date-fns` 4, pnpm shows a peer warning, and the calendar works.
 
-## Deploy on Vercel
+## Hosting
 
-1. Import the repository in Vercel. `vercel.json` sets the build command, the `dist` output and the rewrite that sends page routes to `index.html`.
-2. Keep "Enable access to System Environment Variables" checked in the project's Environment Variables settings. The registry build reads `VERCEL`, `VERCEL_ENV`, `VERCEL_URL` and `VERCEL_PROJECT_PRODUCTION_URL`. With the setting off, set `SITE_URL`.
-3. Optional: set `VITE_SHOW_INSPIRATION=true` to show the Inspiration link in the header. The page at `/inspiration` renders `inspiration.md`.
+The site is a Cloudflare Worker with static assets and no Worker script. `wrangler.jsonc` serves `dist/` and sends page routes to `index.html` (`not_found_handling: "single-page-application"`). Files in `dist/r/` are served as they are. A path under `/r/` that does not exist also answers with `index.html` and status 200, so the catalog checks that a registry response is JSON, not only that it is `ok`.
 
-The registry uses one address for `homepage` and for the URLs of item dependencies. The build picks the first that applies:
+Preview on `workers.dev`:
 
-1. `SITE_URL`, for example `https://design.example.com`.
-2. On Vercel, for a production build: `https://` and `VERCEL_PROJECT_PRODUCTION_URL`.
-3. On Vercel, for a preview build: `https://` and `VERCEL_URL`. The items of a preview and their dependencies then come from that preview. If Deployment Protection covers previews, the CLI gets a 401 from them.
-4. Locally: `http://localhost:5173` for `pnpm dev`, and `http://localhost:4173` for `pnpm build` and `pnpm preview`.
+1. Run `pnpm exec wrangler login` once.
+2. In the shell, set `CLOUDFLARE_ACCOUNT_ID` to the account the Worker belongs to (the id is not kept in the repo, and a login can reach more than one account) and `SITE_URL` to the address the preview will have, for example `https://design-system.<subdomain>.workers.dev`.
+3. Run `pnpm deploy:preview`. It builds, then runs `wrangler deploy`.
 
-When `CI` or `VERCEL` is set and no address applies, the build fails.
+There is no script for a production deploy or a custom domain yet.
+
+Optional: set `VITE_SHOW_INSPIRATION=true` to show the Inspiration link in the header. The page at `/inspiration` renders `inspiration.md`.
+
+The registry uses one address for `homepage` and for the URLs of item dependencies. The build uses `SITE_URL`, for example `https://design.example.com`. Locally it falls back to `http://localhost:5173` for `pnpm dev`, and `http://localhost:4173` for `pnpm build` and `pnpm preview`. When `CI` or `WORKERS_CI` (set by Cloudflare Workers Builds) is set and `SITE_URL` is not, the build fails.
 
 ## Site settings
 

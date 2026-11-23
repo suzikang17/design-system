@@ -106,8 +106,8 @@ export default function ClientUsing() {
         <CodeBlock code={NEXT_LAYOUT} filename="Next.js layout" />
         <p>
           The <C>@/</C> above points at <C>src/</C>, as in an app made with <C>create-next-app --src-dir</C>. In a default
-          Next.js app without a <C>src/</C> folder it points at the project root, so write <C>@/src/client/tokens/base.css</C>{" "}
-          and <C>@/src/client/components/...</C>.
+          Next.js app without a <C>src/</C> folder, the layout is <C>app/layout.tsx</C> and <C>@/</C> points at the project
+          root, so write <C>@/src/client/tokens/base.css</C> and <C>@/src/client/components/...</C>.
         </p>
         <CodeBlock code={ASTRO_LAYOUT} filename="Astro layout" />
       </Step>
