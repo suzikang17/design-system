@@ -42,13 +42,13 @@ describe("the site's ?theme= beside a piece's look", () => {
     expect(document.documentElement).toHaveAttribute("data-theme", "midnight")
     await waitFor(() => expect(window.location.search).toBe(`?${search}`))
     await waitFor(() => expect(screen.getByTestId("location").textContent).toBe(`/client/button?${search}`))
-    const look = within(screen.getByRole("group", { name: "Look" }))
-    expect(look.getByRole("button", { name: "We Curate Life" })).toHaveAttribute("aria-pressed", "true")
+    const picker = within(screen.getByRole("navigation", { name: "Client work" })).getByRole("combobox", { name: "Client" })
+    expect(picker).toHaveValue("wecuratelife")
     expect(screen.getByRole("radio", { name: "outline" })).toHaveAttribute("aria-checked", "true")
     expect((screen.getByTitle("Button preview") as HTMLIFrameElement).getAttribute("src")).toBe(`/client/preview/button?${search}`)
 
     // An edit afterwards does not bring theme back.
-    await userEvent.click(look.getByRole("button", { name: "Neutral" }))
+    await userEvent.selectOptions(picker, "Neutral")
     // The address follows an edit after a short quiet time.
     await waitFor(() => expect(window.location.search).toContain("look=neutral"))
     expect(window.location.search).not.toContain("theme=")

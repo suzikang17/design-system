@@ -13,6 +13,7 @@ import { LocationProbe, renderAt, stubRegistry, stubScrolling } from "./test-uti
 vi.mock("@/site/highlight", () => ({ highlight: () => new Promise<string>(() => {}) }))
 
 beforeEach(() => {
+  window.sessionStorage.clear()
   stubScrolling()
   stubRegistry()
 })
@@ -23,8 +24,10 @@ afterEach(() => {
 
 const frame = () => screen.getByTitle("Button preview") as HTMLIFrameElement
 const where = () => screen.getByTestId("location").textContent
-const lookButton = (name: string) => within(screen.getByRole("group", { name: "Look" })).getByRole("button", { name })
 const sideNav = () => within(screen.getByRole("navigation", { name: "Client work" }))
+/** The client picker in the side nav: it decides the look every piece is drawn in. */
+const picker = () => sideNav().getByRole("combobox", { name: "Client" })
+const pick = (name: string) => userEvent.selectOptions(picker(), name)
 const statesPosted = (post: { mock: { calls: unknown[][] } }) =>
   post.mock.calls.filter(([message]) => (message as { type?: string }).type === "ds:state")
 
@@ -38,43 +41,43 @@ describe("a client piece's page", () => {
     await openButton()
     expect(screen.getByText(button.summary)).toBeInTheDocument()
     expect(frame().getAttribute("src")).toMatch(/\/client\/preview\/button\?look=urlovematters$/)
-    expect(lookButton("ur love matters")).toHaveAttribute("aria-pressed", "true")
+    expect(picker()).toHaveValue("all")
     expect(document.title).toBe("Button · Client work · Design System")
   })
 
-  it("labels the look switch Look, apart from the site's theme switch", async () => {
+  it("has no look switch of its own: the client picker is in the side nav, apart from the site's theme switch", async () => {
     await openButton()
-    expect(screen.getByText("Look", { selector: "span" })).toBeVisible()
-    expect(within(screen.getByRole("group", { name: "Look" })).getAllByRole("button")).toHaveLength(3)
+    expect(screen.queryByRole("group", { name: "Look" })).not.toBeInTheDocument()
+    expect(within(picker()).getAllByRole("option").map((option) => option.textContent)).toEqual(["All clients", "We Curate Life", "ur love matters", "Neutral"])
     expect(screen.getByRole("button", { name: /^Theme:/ })).toBeInTheDocument()
   })
 
-  it("switching the look posts ds:state to the frame and updates the address, without reloading the frame", async () => {
+  it("picking a client posts ds:state to the frame and updates the address, without reloading the frame", async () => {
     await openButton()
     const src = frame().getAttribute("src")
     const post = vi.spyOn(frame().contentWindow!, "postMessage")
 
-    await userEvent.click(lookButton("We Curate Life"))
+    await pick("We Curate Life")
 
     const [message, origin] = statesPosted(post).at(-1)!
     expect((message as { search: string }).search).toBe("look=wecuratelife")
     expect(origin).toBe(window.location.origin)
     await waitFor(() => expect(where()).toBe("/client/button?look=wecuratelife"))
     expect(frame().getAttribute("src")).toBe(src)
-    expect(lookButton("We Curate Life")).toHaveAttribute("aria-pressed", "true")
+    expect(picker()).toHaveValue("wecuratelife")
   })
 
   it("keeps the look and options from the address on load", async () => {
     const search = encodeState(button, { theme: "neutral", props: { ...button.defaults, variant: "outline" } })
     await openButton(`/client/button?${search}`)
     expect(frame().getAttribute("src")).toBe(`/client/preview/button?${search}`)
-    expect(lookButton("Neutral")).toHaveAttribute("aria-pressed", "true")
+    expect(picker()).toHaveValue("neutral")
     expect(screen.getByRole("radio", { name: "outline" })).toHaveAttribute("aria-checked", "true")
   })
 
   it("falls back to the home look and defaults for an unusable address (?look=bogus&p=%%%)", async () => {
     await openButton("/client/button?look=bogus&p=%%%")
-    expect(lookButton("ur love matters")).toHaveAttribute("aria-pressed", "true")
+    expect(picker()).toHaveValue("all")
     expect(screen.getByRole("textbox", { name: "Label" })).toHaveValue("Label")
     expect(screen.getByRole("radio", { name: "primary" })).toHaveAttribute("aria-checked", "true")
     expect(frame().getAttribute("src")).toMatch(/\?look=urlovematters$/)
@@ -117,12 +120,10 @@ describe("a client piece's page", () => {
     expect(post).toHaveBeenCalledWith({ type: "ds:replay" }, window.location.origin)
   })
 
-  it("reaches the look, the sizes, Replay and the options by keyboard, in reading order", async () => {
+  it("reaches the sizes, Replay and the options by keyboard, in reading order", async () => {
     await openButton()
-    lookButton("Neutral").focus()
-    // (In a browser the frame is a stop here, and the piece inside it is reached from there; jsdom skips it.)
-    await userEvent.tab()
-    expect(screen.getByRole("button", { name: "Desktop" })).toHaveFocus()
+    // (In a browser the frame is a stop before these, and the piece inside it is reached from there; jsdom skips it.)
+    screen.getByRole("button", { name: "Desktop" }).focus()
     await userEvent.tab()
     await userEvent.tab()
     await userEvent.tab()
@@ -134,8 +135,9 @@ describe("a client piece's page", () => {
     }
   })
 
-  it("a navigation to the same piece with another search resets the page and tells the frame, without reloading it", async () => {
-    await openButton("/client/button?look=neutral")
+  it("a navigation to the same piece with another search resets the options and tells the frame, without reloading it; the picked client stays", async () => {
+    const edited = encodeState(button, { theme: "neutral", props: { ...button.defaults, variant: "outline" } })
+    await openButton(`/client/button?${edited}`)
     const before = frame()
     const post = vi.spyOn(before.contentWindow!, "postMessage")
 
@@ -143,10 +145,26 @@ describe("a client piece's page", () => {
     await userEvent.click(sideNav().getByRole("link", { name: "Button" }))
 
     expect(where()).toBe("/client/button")
-    expect(lookButton("Neutral")).toHaveAttribute("aria-pressed", "false")
-    expect(lookButton("ur love matters")).toHaveAttribute("aria-pressed", "true")
-    expect((statesPosted(post).at(-1)![0] as { search: string }).search).toBe("look=urlovematters")
+    expect(screen.getByRole("radio", { name: "primary" })).toHaveAttribute("aria-checked", "true")
+    expect(picker()).toHaveValue("neutral")
+    expect((statesPosted(post).at(-1)![0] as { search: string }).search).toBe("look=neutral")
     expect(frame()).toBe(before)
+  })
+
+  it("an edit under All clients does not turn the pick into one client", async () => {
+    await openButton()
+    await userEvent.click(screen.getByRole("radio", { name: "outline" }))
+    await waitFor(() => expect(where()).toMatch(/look=urlovematters&p=/))
+    expect(picker()).toHaveValue("all")
+  })
+
+  it("the picked client carries over to the next piece", async () => {
+    await openButton()
+    await pick("We Curate Life")
+    await userEvent.click(sideNav().getByRole("link", { name: "Input" }))
+    await screen.findByRole("heading", { level: 1, name: "Input" })
+    expect((screen.getByTitle("Input preview") as HTMLIFrameElement).getAttribute("src")).toMatch(/\?look=wecuratelife$/)
+    expect(picker()).toHaveValue("wecuratelife")
   })
 
   it("does not mistake its own address updates for a navigation", async () => {
@@ -155,9 +173,9 @@ describe("a client piece's page", () => {
     await userEvent.clear(label)
     await userEvent.type(label, "Hello there")
     expect(label).toHaveValue("Hello there")
-    await userEvent.click(lookButton("Neutral"))
+    await pick("Neutral")
     expect(label).toHaveValue("Hello there")
-    expect(lookButton("Neutral")).toHaveAttribute("aria-pressed", "true")
+    expect(picker()).toHaveValue("neutral")
   })
 
   it("Back after edits on two history entries of the same piece shows the earlier entry, matching its address", async () => {
@@ -168,14 +186,14 @@ describe("a client piece's page", () => {
     // A pushed navigation to the same piece, then an edit there.
     await userEvent.click(sideNav().getByRole("link", { name: "Button" }))
     expect(where()).toBe("/client/button")
-    await userEvent.click(lookButton("Neutral"))
+    await pick("Neutral")
     await waitFor(() => expect(where()).toBe("/client/button?look=neutral"))
 
     await userEvent.click(screen.getByRole("button", { name: "History back" }))
 
     expect(where()).toBe(first)
-    expect(lookButton("ur love matters")).toHaveAttribute("aria-pressed", "true")
-    expect(lookButton("Neutral")).toHaveAttribute("aria-pressed", "false")
+    // the earlier entry names its look, which becomes the pick again
+    expect(picker()).toHaveValue("urlovematters")
     expect(screen.getByRole("radio", { name: "outline" })).toHaveAttribute("aria-checked", "true")
   })
 
@@ -291,11 +309,11 @@ describe("the address while editing", () => {
   it("a Back after an edit lands on the earlier address and nothing writes over it", async () => {
     await openButton("/client/button?look=wecuratelife")
     await userEvent.click(sideNav().getByRole("link", { name: "Button" }))
-    await userEvent.click(lookButton("Neutral"))
+    await pick("Neutral")
     await userEvent.click(screen.getByRole("button", { name: "History back" }))
     await new Promise((resolve) => setTimeout(resolve, 400))
     expect(where()).toBe("/client/button?look=wecuratelife")
-    expect(lookButton("We Curate Life")).toHaveAttribute("aria-pressed", "true")
+    expect(picker()).toHaveValue("wecuratelife")
   })
 })
 
@@ -319,7 +337,7 @@ describe("client work navigation", () => {
     await screen.findByRole("heading", { level: 1, name: "Button" })
     for (const [name, href] of [
       ["All pieces", "/client"],
-      ["Using these", "/client/using"],
+      ["For developers", "/client/using"],
       ["Colour", "/client/styles/colour"],
       ["Type", "/client/styles/type"],
       ["Motion", "/client/styles/motion"],

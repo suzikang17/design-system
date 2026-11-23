@@ -5,9 +5,11 @@ import { Link, useSearchParams } from "react-router-dom"
 
 import type { ComponentMeta, Group } from "@/client/catalog/meta"
 import { allMeta, GROUPS } from "@/client/catalog/registry"
+import type { ThemeId } from "@/client/tokens/contract"
 import { filterPillClass } from "@/components/ui/filter-pill"
 import { useTitle } from "../useTitle"
-import { ORIGINS, originLabel } from "./model"
+import { inChoice, useClientChoice } from "./clientChoice"
+import { originLabel } from "./model"
 import { PreviewFit } from "./parts/PreviewFit"
 
 /** Filter pills step up to a 40px touch target below `md`, like the rest of the pill scale. */
@@ -19,10 +21,10 @@ type AnyMeta = ComponentMeta<any>
 export default function ClientIndex() {
   useTitle("Client work")
   const [params, setParams] = useSearchParams()
-  // An unknown value in the address means "All". `from` is set by the client picker in the side nav.
+  const { choice } = useClientChoice()
+  // An unknown value in the address means "All". The client comes from the picker in the side nav.
   const group = GROUPS.find((g) => g.id === params.get("group"))?.id
-  const from = ORIGINS.find((o) => o.id === params.get("from"))?.id
-  const shown = allMeta.filter((meta) => (!group || meta.group === group) && (!from || meta.origin.includes(from)))
+  const shown = allMeta.filter((meta) => (!group || meta.group === group) && inChoice(choice, meta.origin))
   // Only groups that hold a piece get a pill; a link may still name an empty one.
   const groups = GROUPS.filter((g) => allMeta.some((meta) => meta.group === g.id))
 
@@ -38,8 +40,8 @@ export default function ClientIndex() {
       <header className="max-w-2xl">
         <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Client work</h1>
         <p className="mt-3 text-muted-foreground">
-          Pieces from client sites, each shown in the look of the site it came from. Open one to try its options in
-          every look, and to install it.
+          Pieces built for client sites. Pick a client on the left to see their work in their own look, then open a
+          piece to try its options.
         </p>
       </header>
 
@@ -51,7 +53,7 @@ export default function ClientIndex() {
         <ul aria-label="Pieces" className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {shown.map((meta) => (
             <li key={meta.id}>
-              <PieceCard meta={meta} />
+              <PieceCard meta={meta} look={choice === "all" ? meta.homeTheme : choice} />
             </li>
           ))}
         </ul>
@@ -109,7 +111,7 @@ const makeInert = (element: HTMLElement | null) => element?.setAttribute("inert"
  * the link, stretched over the whole card, and the piece is a picture of itself, out of the tab order, the
  * accessibility tree and the pointer's reach.
  */
-function PieceCard({ meta }: { meta: AnyMeta }) {
+function PieceCard({ meta, look }: { meta: AnyMeta; look: ThemeId }) {
   const summaryId = useId()
   const Piece = meta.component
   return (
@@ -118,7 +120,7 @@ function PieceCard({ meta }: { meta: AnyMeta }) {
         {/* Laid out at 10/7 of the card's width and drawn at 0.7, so the piece keeps its real proportions. */}
         <div
           className="ds-root absolute left-0 top-0 grid h-[calc(100%/0.7)] w-[calc(100%/0.7)] origin-top-left scale-[0.7] place-items-center overflow-hidden p-6"
-          data-theme={meta.homeTheme}
+          data-theme={look}
           data-layout={meta.layout}
         >
           <PreviewFit width={meta.previewWidth}>

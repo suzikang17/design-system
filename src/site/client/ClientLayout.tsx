@@ -4,12 +4,17 @@ import { useEffect } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 
 import { CatalogLayout } from "../Layout"
+import { ClientChoiceProvider } from "./clientChoice"
 import { ClientNav } from "./ClientNav"
 
 /** The Client work section: the site's catalog layout with this section's nav. */
 export default function ClientLayout() {
   useAddressInSync()
-  return <CatalogLayout nav={<ClientNav />} title="Client work" browseLabel="Browse client work" />
+  return (
+    <ClientChoiceProvider>
+      <CatalogLayout nav={<ClientNav />} title="Client work" browseLabel="Browse client work" />
+    </ClientChoiceProvider>
+  )
 }
 
 /**

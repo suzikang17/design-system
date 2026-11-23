@@ -26,7 +26,7 @@ async function open() {
 describe("Using these", () => {
   it("is in the side nav and walks through the one-time setup", async () => {
     await open()
-    expect(within(screen.getByRole("navigation", { name: "Client work" })).getByRole("link", { name: "Using these" })).toHaveAttribute(
+    expect(within(screen.getByRole("navigation", { name: "Client work" })).getByRole("link", { name: "For developers" })).toHaveAttribute(
       "href",
       "/client/using",
     )

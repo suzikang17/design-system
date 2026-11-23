@@ -1,9 +1,10 @@
-import type { ReactNode } from "react"
-import { Link, NavLink, useLocation } from "react-router-dom"
+import { useId, type ReactNode } from "react"
+import { NavLink } from "react-router-dom"
 
 import { allMeta, GROUPS } from "@/client/catalog/registry"
 import { cn } from "@/lib/utils"
-import { ORIGINS } from "./model"
+import { THEMES } from "@/client/tokens/contract"
+import { inChoice, useClientChoice, type ClientChoice } from "./clientChoice"
 import { STYLE_PAGES } from "./styles"
 
 const topLink = ({ isActive }: { isActive: boolean }) =>
@@ -19,52 +20,42 @@ const itemLink = ({ isActive }: { isActive: boolean }) =>
   )
 
 /**
- * The side nav of the Client work section, drawn like the components nav. The client picker at the top sets `from`
- * in the address of the index page; while a client is picked, the index shows that client's pieces and so do the
- * lists below.
+ * The side nav of the Client work section, drawn like the components nav. The client picker at the top decides
+ * whose work is on show: every piece is drawn in that client's look, and the index and the lists below keep to
+ * that client's pieces.
  */
 export function ClientNav() {
-  const { pathname, search } = useLocation()
-  const params = new URLSearchParams(search)
-  const onIndex = pathname.replace(/\/$/, "") === "/client"
-  const from = onIndex ? ORIGINS.find((o) => o.id === params.get("from"))?.id : undefined
-  /** The index page for one client (or all), keeping the group filter when already on the index. */
-  const clientHref = (id: string | undefined) => {
-    const next = new URLSearchParams()
-    const group = onIndex ? params.get("group") : null
-    if (group) next.set("group", group)
-    if (id) next.set("from", id)
-    const query = next.toString()
-    return query ? `/client?${query}` : "/client"
-  }
+  const { choice, setChoice } = useClientChoice()
+  const pickerId = useId()
   const groups = GROUPS.map((group) => ({
     ...group,
-    pieces: allMeta.filter((meta) => meta.group === group.id && (!from || meta.origin.includes(from))),
-  })).filter(
-    (group) => group.pieces.length > 0,
-  )
+    pieces: allMeta.filter((meta) => meta.group === group.id && inChoice(choice, meta.origin)),
+  })).filter((group) => group.pieces.length > 0)
   return (
     <nav aria-label="Client work" className="space-y-6 text-sm">
+      <div className="px-3">
+        <label htmlFor={pickerId} className="mb-1.5 block text-xs font-semibold text-foreground">
+          Client
+        </label>
+        <select
+          id={pickerId}
+          value={choice}
+          onChange={(event) => setChoice(event.target.value as ClientChoice)}
+          className="h-10 w-full rounded-md border bg-background px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-9"
+        >
+          <option value="all">All clients</option>
+          {THEMES.map((look) => (
+            <option key={look.id} value={look.id}>
+              {look.label}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="space-y-0.5">
         <NavLink to="/client" end className={topLink}>
           All pieces
         </NavLink>
-        <NavLink to="/client/using" className={topLink}>
-          Using these
-        </NavLink>
       </div>
-      <NavSection title="Client">
-        {[{ id: undefined, label: "All clients" }, ...ORIGINS].map((client) => {
-          const current = onIndex && from === client.id
-          return (
-            <li key={client.id ?? "all"}>
-              <Link to={clientHref(client.id)} replace={onIndex} aria-current={current ? "true" : undefined} className={itemLink({ isActive: current })}>
-                {client.label}
-              </Link>
-            </li>
-          )
-        })}
-      </NavSection>
       <NavSection title="Styles">
         {STYLE_PAGES.map((page) => (
           <li key={page.id}>
@@ -85,6 +76,11 @@ export function ClientNav() {
           ))}
         </NavSection>
       ))}
+      <div>
+        <NavLink to="/client/using" className={topLink}>
+          For developers
+        </NavLink>
+      </div>
     </nav>
   )
 }

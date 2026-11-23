@@ -11,10 +11,11 @@ import { CopyButton } from "../CopyButton"
 import { Dependencies, Section } from "../DetailSections"
 import { useLoaded } from "../useLoaded"
 import { useTitle } from "../useTitle"
+import { isThemeId } from "@/client/tokens/contract"
+import { useClientChoice } from "./clientChoice"
 import ClientNotFound from "./ClientNotFound"
 import { clientItemPage, installCommand, pieceTitle } from "./model"
 import { Controls } from "./parts/Controls"
-import { LookSwitch } from "./parts/LookSwitch"
 import { PreviewFrame } from "./parts/PreviewFrame"
 import { SizeSwitch, type PreviewSize } from "./parts/SizeSwitch"
 
@@ -51,7 +52,17 @@ function Piece({ meta }: { meta: AnyMeta }) {
   const location = useLocation()
   const navigate = useNavigate()
   // Local state drives the fields (no lag while typing); the address mirrors it, for sharing and reloads.
-  const [state, setState] = useState<PreviewState>(() => decodeState(meta, location.search))
+  // The look is the client picked in the side nav, unless the address names one (a shared link), which then
+  // becomes the pick. "All clients" shows the piece in the look of the site it came from.
+  const { choice, setChoice } = useClientChoice()
+  const namedLook = (search: string) => {
+    const look = new URLSearchParams(search).get("look")
+    return isThemeId(look) ? look : undefined
+  }
+  const [state, setState] = useState<PreviewState>(() => {
+    const decoded = decodeState(meta, location.search)
+    return namedLook(location.search) || choice === "all" ? decoded : { ...decoded, theme: choice }
+  })
   const [size, setSize] = useState<PreviewSize>("desktop")
   const search = encodeState(meta, state)
 
@@ -108,10 +119,31 @@ function Piece({ meta }: { meta: AnyMeta }) {
     if (pending.current) clearTimeout(pending.current.timer)
     pending.current = null
     written.current = now
-    setState(decodeState(meta, location.search))
+    const decoded = decodeState(meta, location.search)
+    const named = namedLook(location.search)
+    if (named && named !== choice) setChoice(named)
+    setState(named || choice === "all" ? decoded : { ...decoded, theme: choice })
     // Only a new location may reset the state; `search` changes with every edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key])
+
+  // A look named in the address this page opened at becomes the pick (a shared link). The page's own address
+  // writes do not: editing an option under "All clients" must not turn the pick into one client.
+  useEffect(() => {
+    const named = namedLook(location.search)
+    if (named && named !== choice) setChoice(named)
+    // Once, for the address the page opened at; later navigations are handled above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const lastChoice = useRef(choice)
+  useEffect(() => {
+    if (lastChoice.current === choice) return
+    lastChoice.current = choice
+    const theme = choice === "all" ? meta.homeTheme : choice
+    if (theme !== state.theme) update({ ...state, theme })
+    // Only a new pick moves the look.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [choice])
 
   const group = GROUPS.find((g) => g.id === meta.group)
   const loadDependencies = useMemo(() => () => publishedDependencies(`client-${meta.id}`), [meta.id])
@@ -136,9 +168,6 @@ function Piece({ meta }: { meta: AnyMeta }) {
         <h2 id="preview" className="sr-only">
           Preview
         </h2>
-        <div className="mb-3">
-          <LookSwitch value={state.theme} onChange={(theme) => update({ ...state, theme })} />
-        </div>
         <PreviewFrame meta={meta} search={search} size={size}>
           <SizeSwitch value={size} onChange={setSize} />
         </PreviewFrame>
@@ -148,7 +177,12 @@ function Piece({ meta }: { meta: AnyMeta }) {
         <Controls meta={meta} props={state.props} onChange={(props) => update({ ...state, props })} />
       </Section>
 
-      <div className="max-w-4xl">
+      {/* Most visitors are not developers: how to install a piece, and its code, stay folded away. */}
+      <details className="group/dev mt-14 max-w-4xl rounded-lg border bg-card/50">
+        <summary className="cursor-pointer select-none rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          For developers: install and source
+        </summary>
+        <div className="px-4 pb-6">
         <Section id="install" title="Install">
           <div className="flex items-center gap-2 rounded-lg border bg-card py-1 pl-4 pr-1">
             <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap py-2 font-mono text-[13px]">{command}</code>
@@ -174,7 +208,8 @@ function Piece({ meta }: { meta: AnyMeta }) {
             ))}
           </div>
         </Section>
-      </div>
+        </div>
+      </details>
     </article>
   )
 }
