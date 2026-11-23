@@ -154,7 +154,9 @@ describe("telling the framing page how tall the piece is", () => {
     try {
       frameIt()
       await openPreview("/client/preview/button?look=wecuratelife")
-      expect(parent.postMessage).not.toHaveBeenCalled()
+      // it says it is ready, as every preview does, but reports no height
+      expect(parent.postMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: "ds:height" }), expect.anything())
+      expect(parent.postMessage).toHaveBeenCalledWith({ type: "ds:ready" }, window.location.origin)
     } finally {
       button.layout = layout
     }

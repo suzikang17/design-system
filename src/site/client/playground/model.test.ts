@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import button from "@/client/components/button/button.meta"
 import columns from "@/client/components/columns/columns.meta"
-import { MAX_ITEMS, cleanItems, countItems, getAt, replaceAt, slotCount, type PageItem, decodeItems, decodePage, encodeItems, encodePage, insertAt, isPageReport, itemProps, moveTo, readDrag, removeAt, starterPage, withProps } from "./model"
+import { MAX_ITEMS, STRUCTURES, addPath, addStructurePath, structureItem, trayPieces, validSelection, cleanItems, countItems, getAt, replaceAt, slotCount, type PageItem, decodeItems, decodePage, encodeItems, encodePage, insertAt, isPageReport, itemProps, moveTo, readDrag, removeAt, starterPage, withProps } from "./model"
 
 const a = { id: "button" }
 const b = { id: "chips" }
@@ -133,7 +133,10 @@ describe("the playground's page model", () => {
       const search = encodePage({ look: "neutral", items: page, selected: [1, 0, 0, 0, 1] })
       expect(decodePage(search)).toEqual({ look: "neutral", items: page, selected: [1, 0, 0, 0, 1] })
       expect(decodePage(`page=${encodeItems(page)}&sel=1.0.0.0.9`).selected).toBeNull()
-      expect(decodePage(`page=${encodeItems(page)}&sel=1.0`).selected).toBeNull()
+      // a slot can be selected too (to add into); one that is not there cannot
+      expect(decodePage(`page=${encodeItems(page)}&sel=1.0`).selected).toEqual([1, 0])
+      expect(decodePage(`page=${encodeItems(page)}&sel=1.5`).selected).toBeNull()
+      expect(decodePage(`page=${encodeItems(page)}&sel=0.0`).selected).toBeNull()
     })
 
     it("holds a link to the limits: the count is of every piece, and layout pieces nest twice", () => {
@@ -147,6 +150,8 @@ describe("the playground's page model", () => {
 
   it("reads only its own drags and reports", () => {
     expect(readDrag('{"id":"button"}')).toEqual({ id: "button" })
+    expect(readDrag('{"id":"columns","p":"abc"}')).toEqual({ id: "columns", p: "abc" })
+    expect(readDrag('{"id":"columns","p":5}')).toEqual({ id: "columns" })
     expect(readDrag('{"from":[2]}')).toEqual({ from: [2] })
     expect(readDrag('{"from":[1,0,3]}')).toEqual({ from: [1, 0, 3] })
     for (const raw of ['{"id":"nope"}', '{"from":2}', '{"from":[-1]}', '{"from":[1.5]}', '{"from":[1,0]}', '{"from":[]}', "null", "x", ""]) expect(readDrag(raw)).toBeNull()
@@ -162,6 +167,43 @@ describe("the playground's page model", () => {
     for (const item of starterPage()) expect(cleanItems([[item.id]])).toHaveLength(1)
     // and it survives a trip through a link unchanged, the Columns in it with what it holds
     for (const look of ["wecuratelife", "urlovematters", "neutral"] as const) expect(decodeItems(encodeItems(starterPage(look)))).toEqual(starterPage(look))
-    expect(starterPage().find((item) => item.id === "columns")?.c).toEqual([[{ id: "photo" }], [{ id: "eyebrow" }, { id: "button" }]])
+    // almost nothing: a nav bar, one empty structure and a footer
+    expect(starterPage().map((item) => item.id)).toEqual(["nav-bar", "columns", "footer"])
+    expect(starterPage()[1]?.c).toEqual([[], []])
+  })
+
+  it("offers structures: layout pieces with their options set, each starting empty", () => {
+    for (const structure of STRUCTURES) {
+      const item = structureItem(structure)!
+      expect(cleanItems([item]), structure.key).toEqual([item])
+      expect(item.c?.every((slot) => slot.length === 0)).toBe(true)
+    }
+    const byKey = (key: string) => structureItem(STRUCTURES.find((structure) => structure.key === key)!)!
+    expect(byKey("full").c).toHaveLength(1)
+    expect(byKey("thirds").c).toHaveLength(3)
+    expect(itemProps(byKey("wide-narrow")).split).toBe("2/1")
+    expect(byKey("grid").id).toBe("grid")
+    expect(trayPieces().some((meta) => meta.group === "layout")).toBe(false)
+    expect(trayPieces()[0]?.group).toBe("sections")
+  })
+
+  it("a piece added from the tray goes where the selection points", () => {
+    const halves: PageItem = { id: "columns", c: [[a], []] }
+    const page = [{ id: "nav-bar" }, halves, { id: "footer" }]
+    expect(addPath(page, null)).toEqual([2]) // onto the page, above the footer
+    expect(addPath([a], null)).toEqual([1])
+    expect(addPath(page, [1, 1])).toEqual([1, 1, 0]) // into the picked slot
+    expect(addPath(page, [1, 0])).toEqual([1, 0, 1])
+    expect(addPath(page, [1])).toEqual([1, 1, 0]) // a picked structure: its first empty slot
+    expect(addPath([{ id: "columns", c: [[a], [b]] }], [0])).toEqual([0, 0, 1]) // none empty: its first
+    expect(addPath(page, [1, 0, 0])).toEqual([1, 0, 1]) // after the picked piece, in its slot
+    expect(addPath(page, [0])).toEqual([1]) // after the picked piece, on the page
+    expect(addPath(page, [2])).toEqual([2]) // never below the footer
+    expect(addPath(page, [9, 0])).toEqual([2]) // a slot that is gone
+    expect(addStructurePath(page, [1, 0, 0])).toEqual([2]) // after the structure the selection is in
+    expect(addStructurePath(page, null)).toEqual([2])
+    expect(addStructurePath([], null)).toEqual([0])
+    expect(validSelection(page, [1, 1])).toEqual([1, 1])
+    for (const bad of [[1, 2], [0, 0], [7], [], "1", null]) expect(validSelection(page, bad)).toBeNull()
   })
 })

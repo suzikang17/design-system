@@ -27,29 +27,41 @@ export const MAX_DEPTH = 2
 /** The look the page is drawn in when no client is picked. */
 export const DEFAULT_LOOK: ThemeId = "wecuratelife"
 
-/** The page a visitor starts from: a whole small site, top to bottom, with each section in the layout of the
- *  site whose look the page is drawn in, and one Columns holding a photo and a few words. Ids with no piece are skipped. */
-const STARTER_IDS = ["nav-bar", "hero", "steps", "gallery", "faq", "cta-band", "footer"]
+/** The page a visitor starts from: almost nothing. A nav bar and a footer in the layout of the site whose look the
+ *  page is drawn in, and between them one empty two-column structure, waiting for pieces. */
+const STARTER_IDS = ["nav-bar", "columns", "footer"]
 const STARTER_VARIANTS: Record<ThemeId, Record<string, string>> = {
-  wecuratelife: { "nav-bar": "bar", hero: "wordmark", "cta-band": "mark", footer: "minimal" },
-  urlovematters: { "nav-bar": "menu", hero: "split", "cta-band": "band", footer: "row" },
-  neutral: { "nav-bar": "menu", hero: "split", "cta-band": "band", footer: "row" },
-}
-/** In the middle of the starter: a photo beside a few words, to show that Columns holds other pieces. */
-const starterColumns = (): PageItem[] => {
-  const meta = getMeta("columns")
-  if (!meta) return []
-  const inside = (ids: string[]) => ids.filter((id) => getMeta(id)).map((id) => ({ id }))
-  return [{ ...withProps({ id: "columns" }, { ...meta.defaults, align: "center", gap: "lg" }), c: [inside(["photo"]), inside(["eyebrow", "button"])] }]
+  wecuratelife: { "nav-bar": "bar", footer: "minimal" },
+  urlovematters: { "nav-bar": "menu", footer: "row" },
+  neutral: { "nav-bar": "menu", footer: "row" },
 }
 export function starterPage(look: ThemeId = DEFAULT_LOOK): PageItem[] {
   return STARTER_IDS.flatMap((id) => {
     const meta = getMeta(id)
     if (!meta) return []
     const variant = STARTER_VARIANTS[look][id]
-    const item = variant ? withProps({ id }, { ...meta.defaults, variant }) : { id }
-    return id === "steps" ? [item, ...starterColumns()] : [item]
+    return [tidy(variant ? withProps({ id }, { ...meta.defaults, variant }) : { id })]
   })
+}
+
+/** The structures the tray offers: a layout piece with its options set, drawn as a small wireframe. `cells` are
+ *  the shares of the width the wireframe shows; `rows` repeats them (a grid). */
+export type Structure = { key: string; label: string; id: string; props: Record<string, unknown>; cells: readonly number[]; rows?: number; loose?: boolean }
+export const STRUCTURES: readonly Structure[] = [
+  { key: "full", label: "Full width", id: "columns", props: { split: "1" }, cells: [1] },
+  { key: "halves", label: "Halves", id: "columns", props: { split: "1/1" }, cells: [1, 1] },
+  { key: "thirds", label: "Thirds", id: "columns", props: { split: "1/1/1" }, cells: [1, 1, 1] },
+  { key: "quarters", label: "Quarters", id: "columns", props: { split: "1/1/1/1" }, cells: [1, 1, 1, 1] },
+  { key: "wide-narrow", label: "Wide left", id: "columns", props: { split: "2/1" }, cells: [2, 1] },
+  { key: "narrow-wide", label: "Wide right", id: "columns", props: { split: "1/2" }, cells: [1, 2] },
+  { key: "grid", label: "Grid", id: "grid", props: {}, cells: [1, 1, 1], rows: 2 },
+  { key: "line", label: "In a line", id: "row", props: {}, cells: [2, 3, 2], loose: true },
+]
+
+/** The page item a structure starts as: empty, with its options set. */
+export function structureItem(structure: Structure): PageItem | undefined {
+  const meta = getMeta(structure.id)
+  return meta ? tidy(withProps({ id: structure.id }, { ...meta.defaults, ...structure.props })) : undefined
 }
 
 const toBase64Url = (text: string) => {
@@ -144,7 +156,7 @@ export function decodePage(search: string): { look: ThemeId | null; items: PageI
   const look = params.get("look")
   const items = params.has("page") ? decodeItems(params.get("page")) : null
   const sel = (params.get("sel") ?? "").split(".").map((part) => (/^\d+$/.test(part) ? Number(part) : Number.NaN))
-  const selected = items && getAt(items, sel) ? sel : null
+  const selected = items ? validSelection(items, sel) : null
   return { look: isThemeId(look) ? look : null, items, selected }
 }
 
@@ -166,7 +178,48 @@ export function withProps(item: PageItem, props: Record<string, unknown>): PageI
   return tidy(p ? { id: item.id, p, c: item.c } : { id: item.id, c: item.c })
 }
 
-const isPath = (path: unknown): path is Path => Array.isArray(path) && path.length % 2 === 1 && path.every((n) => Number.isInteger(n) && n >= 0)
+const isNumbers = (path: unknown): path is Path => Array.isArray(path) && path.length > 0 && path.every((n) => Number.isInteger(n) && n >= 0)
+/** A path to an item: an odd number of steps. */
+const isPath = (path: unknown): path is Path => isNumbers(path) && path.length % 2 === 1
+/** A path to a slot of a layout piece: the item's path, then which slot. */
+export const isSlotPath = (path: unknown): boolean => isNumbers(path) && path.length % 2 === 0
+
+/** The pieces in a slot, if the slot is there. */
+export function listAt(items: readonly PageItem[], slotPath: Path): PageItem[] | undefined {
+  if (!isNumbers(slotPath) || slotPath.length % 2 !== 0) return undefined
+  const holder = getAt(items, slotPath.slice(0, -1))
+  return holder ? slotsOf(holder)[slotPath.at(-1)!] : undefined
+}
+
+/** What is selected: a piece, or a slot of a layout piece (to add pieces into). Anything else is no selection. */
+export const validSelection = (items: readonly PageItem[], path: unknown): Path | null =>
+  isNumbers(path) && (isSlotPath(path) ? listAt(items, path) : getAt(items, path)) ? path : null
+
+/** Where on the page itself something added from the tray goes: after whatever holds the selection, else at the
+ *  end; never below a footer that closes the page. */
+export function addStructurePath(items: readonly PageItem[], selected: Path | null): Path {
+  const root = selected ? items[selected[0]!] : undefined
+  if (!root) return [items.at(-1)?.id === "footer" ? items.length - 1 : items.length]
+  return [root.id === "footer" ? selected![0]! : selected![0]! + 1]
+}
+
+/** Where a piece added from the tray goes: into the selected slot; into the selected structure's first empty slot
+ *  (its first slot when none is empty); after the selected piece when that is inside a structure; else onto the
+ *  page, as a structure would. */
+export function addPath(items: readonly PageItem[], selected: Path | null): Path {
+  if (selected && isSlotPath(selected)) {
+    const list = listAt(items, selected)
+    if (list) return [...selected, list.length]
+  }
+  const item = selected ? getAt(items, selected) : undefined
+  if (!selected || !item) return addStructurePath(items, null)
+  if (slotCount(item) > 0) {
+    const slots = slotsOf(item)
+    const empty = Math.max(0, slots.findIndex((slot) => slot.length === 0))
+    return [...selected, empty, slots[empty]!.length]
+  }
+  return selected.length > 1 ? [...selected.slice(0, -1), selected.at(-1)! + 1] : addStructurePath(items, selected)
+}
 
 /** The item at a path, if there is one. */
 export function getAt(items: readonly PageItem[], path: Path): PageItem | undefined {
@@ -236,19 +289,19 @@ export type PageReport = { type: "ds:page"; items: unknown; selected: Path | nul
 export function isPageReport(data: unknown): data is PageReport {
   if (typeof data !== "object" || data === null) return false
   const message = data as { type?: unknown; items?: unknown; selected?: unknown }
-  return message.type === "ds:page" && Array.isArray(message.items) && (message.selected === null || isPath(message.selected))
+  return message.type === "ds:page" && Array.isArray(message.items) && (message.selected === null || isNumbers(message.selected))
 }
 
 /** What a drag carries: a new piece from the tray, or a piece already on the page. */
 export const DRAG_TYPE = "application/x-ds-piece"
-export type DragPayload = { id: string } | { from: Path }
+export type DragPayload = { id: string; p?: string } | { from: Path }
 
 export function readDrag(raw: string): DragPayload | null {
   try {
     const data: unknown = JSON.parse(raw)
     if (typeof data !== "object" || data === null) return null
-    const { id, from } = data as { id?: unknown; from?: unknown }
-    if (typeof id === "string" && getMeta(id)) return { id }
+    const { id, p, from } = data as { id?: unknown; p?: unknown; from?: unknown }
+    if (typeof id === "string" && getMeta(id)) return typeof p === "string" && p.length > 0 && p.length <= MAX_ITEM_P ? { id, p } : { id }
     if (isPath(from)) return { from }
   } catch {
     // not ours
@@ -256,7 +309,7 @@ export function readDrag(raw: string): DragPayload | null {
   return null
 }
 
-/** The tray: every piece, the page sections first, then the layout pieces that hold others. */
-const TRAY_ORDER = ["sections", "layout"]
-const trayRank = (meta: AnyMeta) => (TRAY_ORDER.indexOf(meta.group) + 1 || TRAY_ORDER.length + 1)
-export const trayPieces = (): readonly AnyMeta[] => [...allMeta].sort((a, b) => trayRank(a) - trayRank(b))
+/** The tray's components: every piece that is not a layout piece (those are offered as structures), the page
+ *  sections first. */
+export const trayPieces = (): readonly AnyMeta[] =>
+  allMeta.filter((meta) => meta.group !== "layout").sort((a, b) => Number(b.group === "sections") - Number(a.group === "sections"))

@@ -66,6 +66,10 @@ export function PreviewFrame({ meta, page, search, size, children }: PreviewFram
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.source !== frame.current?.contentWindow || event.origin !== window.location.origin) return
+      // The page in the frame says when it has started listening: a change made before then was posted to no one.
+      if ((event.data as { type?: unknown } | null)?.type === "ds:ready") {
+        frame.current?.contentWindow?.postMessage({ type: "ds:state", search: latest.current } satisfies PreviewMessage, window.location.origin)
+      }
       if (isPreviewReport(event.data)) setReported(event.data.height)
     }
     window.addEventListener("message", onMessage)

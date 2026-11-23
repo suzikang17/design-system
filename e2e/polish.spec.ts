@@ -108,11 +108,12 @@ test.describe("the playground", () => {
       .locator("[data-item]")
       .evaluateAll((rows) => rows.map((row) => row.querySelector("[class^='ds-']")?.className.split(" ")[0]))
 
-  test("starts from a whole small page, with nothing spilling sideways inside the device", async ({ page }) => {
+  test("starts from very little: a nav bar, an empty structure and a footer, with nothing spilling sideways", async ({ page }) => {
     await page.goto("client/playground")
     const frame = page.frameLocator('iframe[title="Your page"]')
     await expect(frame.locator("[data-item]").first()).toBeVisible()
-    expect((await pieces(page)).length).toBeGreaterThanOrEqual(5)
+    await expect(frame.locator("[data-item]")).toHaveCount(3)
+    await expect(frame.getByRole("button", { name: "Add a piece here" })).toHaveCount(2)
     const overflow = await frame.locator("body").evaluate(() => ({ s: document.documentElement.scrollWidth, w: window.innerWidth }))
     expect(overflow.s, `page scrollWidth ${overflow.s} > innerWidth ${overflow.w}`).toBeLessThanOrEqual(overflow.w)
   })
@@ -159,7 +160,7 @@ test.describe("the playground", () => {
     await page.goto(`client/playground?page=${b64(start)}`)
     const frame = page.frameLocator('iframe[title="Your page"]')
     const inAddress = () => JSON.parse(Buffer.from(new URL(page.url()).searchParams.get("page") ?? "", "base64url").toString() || "null")
-    await expect(frame.locator('[data-slot="0.1"]')).toHaveText("Drop pieces here")
+    await expect(frame.locator('[data-slot="0.1"]')).toHaveText("Add a piece")
 
     // from the tray into the empty column
     await page.getByRole("button", { name: "Add Chips" }).dragTo(frame.locator('[data-slot="0.1"]'))
@@ -192,13 +193,37 @@ test.describe("the playground", () => {
     await page.goto(`client/playground?page=${b64(start)}`)
     const frame = page.frameLocator('iframe[title="Your page"]')
     await frame.locator('[data-item="0"]').click({ position: { x: 4, y: 4 } })
-    await expect(page.getByRole("heading", { name: "Columns options" })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Structure options" })).toBeVisible()
     await page.getByRole("combobox", { name: "Split" }).click()
     await page.getByRole("option", { name: "1/1/1", exact: true }).click()
     await expect(frame.locator(".ds-columns__grid > [data-slot]")).toHaveCount(3)
-    await expect(frame.locator('[data-slot="0.2"]')).toHaveText("Drop pieces here")
+    await expect(frame.locator('[data-slot="0.2"]')).toHaveText("Add a piece")
     await expect(frame.locator('[data-slot="0.0"] .ds-button')).toBeVisible()
     await expect(frame.locator('[data-slot="0.1"] .ds-chips')).toBeVisible()
+    const overflow = await frame.locator("body").evaluate(() => ({ s: document.documentElement.scrollWidth, w: window.innerWidth }))
+    expect(overflow.s).toBeLessThanOrEqual(overflow.w)
+  })
+
+  test("structure first, then pieces: tap a structure, tap a space on the page, tap pieces into it", async ({ page }) => {
+    await page.goto("client/playground")
+    const frame = page.frameLocator('iframe[title="Your page"]')
+    // the starter's second column
+    await frame.locator('[data-slot="1.1"]').getByRole("button", { name: "Add a piece here" }).click()
+    await expect(frame.locator('[data-slot="1.1"]')).toHaveAttribute("data-slot-selected", "")
+    await expect(page.getByText("Tap a piece to add it to the picked space.")).toBeVisible()
+    await page.getByRole("button", { name: "Add Eyebrow" }).click()
+    await page.getByRole("button", { name: "Add Button", exact: true }).click()
+    await expect(frame.locator('[data-slot="1.1"] > [data-item]')).toHaveCount(2)
+    await expect(frame.locator('[data-slot="1.0"] > [data-item]')).toHaveCount(0)
+
+    // a new structure lands under the one in use, above the footer, with its first space picked
+    await page.getByRole("button", { name: "Add structure: Thirds" }).click()
+    await expect(frame.locator(".ds-columns")).toHaveCount(2)
+    await expect(frame.locator('[data-slot="2.0"]')).toHaveAttribute("data-slot-selected", "")
+    await page.getByRole("button", { name: "Add Photo" }).click()
+    await expect(frame.locator('[data-slot="2.0"] .ds-photo')).toBeVisible()
+    expect(await pieces(page)).toHaveLength(7)
+    await expect(frame.locator(".ds-root > [data-item]").last().locator(".ds-footer")).toBeVisible()
     const overflow = await frame.locator("body").evaluate(() => ({ s: document.documentElement.scrollWidth, w: window.innerWidth }))
     expect(overflow.s).toBeLessThanOrEqual(overflow.w)
   })

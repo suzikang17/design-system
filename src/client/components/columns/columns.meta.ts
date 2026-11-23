@@ -13,7 +13,7 @@ export default defineMeta<ColumnsProps>({
   demo: withBlocks(Columns, (props) => splitShares(props.split).length, { uneven: true }),
   defaults: { split: '1/1', gap: 'md', align: 'start', stackAt: 'md', reverse: false },
   controls: {
-    split: { type: 'select', label: 'Split', options: ['1/1', '1/1/1', '1/1/1/1', '2/1', '1/2', '3/1', '1/3', '1/2/1'] },
+    split: { type: 'select', label: 'Split', options: ['1', '1/1', '1/1/1', '1/1/1/1', '2/1', '1/2', '3/1', '1/3', '1/2/1'] },
     gap: { type: 'select', label: 'Space between', options: ['none', 'xs', 'sm', 'md', 'lg', 'xl'] },
     align: { type: 'select', label: 'Top to bottom', options: ['start', 'center', 'end', 'stretch'] },
     stackAt: { type: 'select', label: 'Stack when narrower than', options: ['never', 'sm', 'md', 'lg'] },

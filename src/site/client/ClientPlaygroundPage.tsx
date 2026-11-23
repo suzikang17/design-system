@@ -2,7 +2,7 @@ import "@/client/tokens/all.css"
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type DragEvent, type MouseEvent, type ReactNode } from "react"
 import { useLocation } from "react-router-dom"
-import { ArrowDown, ArrowUp, GripVertical, Trash2 } from "lucide-react"
+import { ArrowDown, ArrowUp, GripVertical, Plus, Trash2 } from "lucide-react"
 
 import { Container } from "@/client/components/container/Container"
 import { cn } from "@/lib/utils"
@@ -60,8 +60,16 @@ const CHROME = `
 [data-flow="row"] > [data-item][data-drop="after"] { box-shadow: 4px 0 0 0 #0ea5e9; }
 [data-slot] { min-height: 72px; }
 [data-slot][data-slot-column] { display: flex; flex-direction: column; gap: 16px; align-self: stretch; }
-[data-slot-empty] { flex: 1 1 auto; display: grid; place-items: center; min-height: 72px; min-width: 120px; margin: 0; padding: 12px; border: 1px dashed currentColor; border-radius: 8px; font: 13px/1.3 system-ui, sans-serif; text-align: center; opacity: .45; }
-[data-slot][data-slot-drop] > [data-slot-empty] { opacity: 1; border: 2px solid #0ea5e9; color: #0ea5e9; }
+[data-slot-add] { all: unset; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; border: 1px dashed currentColor; border-radius: 8px; font: 500 13px/1.3 system-ui, sans-serif; opacity: .5; transition: opacity .15s; }
+[data-slot-add]:hover, [data-slot-add]:focus-visible { opacity: 1; color: #0284c7; }
+[data-slot-add]:focus-visible { outline: 2px solid #0ea5e9; outline-offset: 2px; }
+/* an empty slot is all invitation; a slot with pieces keeps a small one at its end, shown while its structure is in use */
+[data-slot-add][data-empty] { flex: 1 1 auto; min-height: 96px; min-width: 140px; padding: 12px; }
+[data-slot-add]:not([data-empty]) { min-height: 36px; min-width: 36px; padding: 4px 10px; opacity: 0; }
+[data-slot-add]:not([data-empty]) > span { display: none; }
+[data-item]:hover [data-slot-add]:not([data-empty]), [data-item][data-selected] [data-slot-add]:not([data-empty]), [data-slot][data-slot-selected] > [data-slot-add], [data-slot-add]:not([data-empty]):focus-visible { opacity: .6; }
+[data-slot][data-slot-selected] > [data-slot-add], [data-slot][data-slot-drop] > [data-slot-add] { opacity: 1; border: 2px solid #0ea5e9; color: #0284c7; }
+[data-slot][data-slot-selected] { outline: 2px solid #0ea5e9; outline-offset: 4px; border-radius: 8px; }
 `
 
 /**
@@ -88,6 +96,8 @@ export default function ClientPlaygroundPage() {
       else setState(read(event.data.search))
     }
     window.addEventListener("message", onMessage)
+    // Now listening: ask the framing page for its current state, in case it changed while this page was starting.
+    if (window.parent !== window) window.parent.postMessage({ type: "ds:ready" }, window.location.origin)
     return () => window.removeEventListener("message", onMessage)
   }, [])
 
@@ -111,6 +121,13 @@ export default function ClientPlaygroundPage() {
   const { items, selected } = state
   const selectedKey = selected ? keyOf(selected) : null
   const dropKey = dropAt ? keyOf(dropAt) : null
+
+  // What is selected is brought into view: a structure added from the tray may land below the screen.
+  useEffect(() => {
+    if (!selectedKey) return
+    const target = root.current?.querySelector(`[data-slot="${selectedKey}"], [data-item="${selectedKey}"]`)
+    target?.scrollIntoView?.({ block: "nearest", behavior: "smooth" })
+  }, [selectedKey])
 
   /** Where a drop at this point would land: in the innermost slot under the pointer, else on the page itself;
    *  before the first piece there whose middle the pointer has not passed. */
@@ -143,7 +160,7 @@ export default function ClientPlaygroundPage() {
     if (!payload) return
     event.preventDefault()
     if ("id" in payload) {
-      const next = insertAt(items, at, { id: payload.id })
+      const next = insertAt(items, at, payload.p ? { id: payload.id, p: payload.p } : { id: payload.id })
       if (countItems(next) > countItems(items)) change(next, at)
     } else {
       const moved = moveTo(items, payload.from, at)
@@ -155,6 +172,13 @@ export default function ClientPlaygroundPage() {
   const onClick = (event: MouseEvent) => {
     const target = event.target as HTMLElement
     if (target.closest("[data-item-tools]")) return
+    // "Add a piece" picks its slot: the playground's tray then adds into it.
+    const add = target.closest<HTMLElement>("[data-slot-add]")
+    if (add) {
+      const slot = add.closest<HTMLElement>("[data-slot]")?.dataset.slot
+      if (slot && slot !== selectedKey) change(items, pathOf(slot))
+      return
+    }
     if (target.closest("a")) event.preventDefault()
     const key = target.closest<HTMLElement>("[data-item]")?.dataset.item
     if (key && key !== selectedKey) change(items, pathOf(key))
@@ -163,14 +187,22 @@ export default function ClientPlaygroundPage() {
   const renderList = (list: readonly PageItem[], listPath: Path, flow: Flow): ReactNode =>
     list.map((item, index) => renderItem(item, [...listPath, index], flow, list.length))
 
-  /** What a slot holds: its pieces, or an invitation when it has none. */
-  const slotBody = (list: readonly PageItem[], listPath: Path, flow: Flow): ReactNode =>
-    list.length > 0 ? renderList(list, listPath, flow) : <p data-slot-empty="">Drop pieces here</p>
+  /** What a slot holds: its pieces, then a button that picks the slot as where the tray adds to. */
+  const slotBody = (list: readonly PageItem[], listPath: Path, flow: Flow): ReactNode => (
+    <>
+      {renderList(list, listPath, flow)}
+      <button type="button" data-slot-add="" data-empty={list.length === 0 ? "" : undefined} aria-label="Add a piece here" aria-pressed={selectedKey === keyOf(listPath)}>
+        <Plus aria-hidden="true" className="size-4" />
+        <span>Add a piece</span>
+      </button>
+    </>
+  )
 
   const slotProps = (list: readonly PageItem[], listPath: Path, flow: Flow) => ({
     "data-slot": keyOf(listPath),
     "data-flow": flow,
     "data-slot-drop": list.length === 0 && dropKey === keyOf([...listPath, 0]) ? "" : undefined,
+    "data-slot-selected": selectedKey === keyOf(listPath) ? "" : undefined,
   })
 
   const renderItem = (item: PageItem, path: Path, flow: Flow, siblings: number): ReactNode => {
@@ -287,7 +319,7 @@ export default function ClientPlaygroundPage() {
       <style>{CHROME}</style>
       {items.length === 0 && (
         <p className="grid min-h-screen place-items-center px-6 text-center font-sans text-base opacity-60" data-empty="">
-          Drag a piece here to start your page.
+          Pick a structure to start your page.
         </p>
       )}
       {renderList(items, [], "column")}

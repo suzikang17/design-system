@@ -48,6 +48,8 @@ function PreviewBody({ meta }: { meta: ComponentMeta<any> }) {
       else setState(decodeState(meta, event.data.search))
     }
     window.addEventListener("message", onMessage)
+    // Now listening: ask the framing page for its current state, in case it changed while this page was starting.
+    if (window.parent !== window) window.parent.postMessage({ type: "ds:ready" }, window.location.origin)
     return () => window.removeEventListener("message", onMessage)
   }, [meta])
 

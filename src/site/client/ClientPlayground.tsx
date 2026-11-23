@@ -5,6 +5,7 @@ import { Check, Link2, Plus, RotateCcw, Trash2 } from "lucide-react"
 import { GROUPS } from "@/client/catalog/registry"
 import { THEMES } from "@/client/tokens/contract"
 import { PillButton } from "@/components/ui/pill"
+import { cn } from "@/lib/utils"
 import { useTitle } from "../useTitle"
 import { useClientChoice } from "./clientChoice"
 import { Controls } from "./parts/Controls"
@@ -14,6 +15,9 @@ import {
   DEFAULT_LOOK,
   DRAG_TYPE,
   MAX_ITEMS,
+  STRUCTURES,
+  addPath,
+  addStructurePath,
   cleanItems,
   countItems,
   decodePage,
@@ -21,15 +25,19 @@ import {
   encodePage,
   getAt,
   insertAt,
+  isSlotPath,
   isPageReport,
   itemProps,
   metaOf,
   replaceAt,
   starterPage,
+  structureItem,
+  validSelection,
   trayPieces,
   withProps,
   type PageItem,
   type Path,
+  type Structure,
 } from "./playground/model"
 
 /** Quiet time after the last change before the address is written (see ClientPiece). */
@@ -73,7 +81,7 @@ export default function ClientPlayground() {
       if (!isPageReport(event.data)) return
       const next = cleanItems(event.data.items)
       setItems(next)
-      setSelected(event.data.selected !== null && getAt(next, event.data.selected) ? event.data.selected : null)
+      setSelected(validSelection(next, event.data.selected))
     }
     window.addEventListener("message", onMessage)
     return () => window.removeEventListener("message", onMessage)
@@ -91,11 +99,26 @@ export default function ClientPlayground() {
     return () => clearTimeout(timer)
   }, [share])
 
+  /** A component from the tray goes where the selection points: a picked slot, a picked structure, else the page. */
   const add = (id: string) => {
-    const next = insertAt(items, [items.length], { id })
-    if (next.length === items.length) return
+    const at = addPath(items, selected)
+    const next = insertAt(items, at, { id })
+    if (countItems(next) === countItems(items)) return
     setItems(next)
-    setSelected([items.length])
+    // A picked slot or structure stays picked, to take the next piece too; otherwise the new piece is selected.
+    const keep = selected && (isSlotPath(selected) || at.length > selected.length)
+    if (!keep) setSelected(at)
+  }
+
+  /** A structure goes onto the page itself, and its first slot is picked, ready for pieces. */
+  const addStructure = (structure: Structure) => {
+    const item = structureItem(structure)
+    if (!item) return
+    const at = addStructurePath(items, selected)
+    const next = insertAt(items, at, item)
+    if (countItems(next) === countItems(items)) return
+    setItems(next)
+    setSelected([...at, 0])
   }
 
   const copyLink = async () => {
@@ -110,7 +133,8 @@ export default function ClientPlayground() {
   }
 
   const tray = useMemo(() => trayPieces(), [])
-  const current = selected !== null ? getAt(items, selected) : undefined
+  const slotPicked = selected !== null && isSlotPath(selected)
+  const current = selected !== null && !slotPicked ? getAt(items, selected) : undefined
   const currentMeta = current ? metaOf(current) : undefined
   const lookLabel = THEMES.find((theme) => theme.id === look)?.label
   const full = countItems(items) >= MAX_ITEMS
@@ -150,41 +174,78 @@ export default function ClientPlayground() {
         </div>
       </div>
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-        Drag pieces onto the page and move them around to try a layout. Columns, Row, Grid and Stack hold other pieces: drop them inside to sit side by side.
+        Pick a structure, then add pieces into it.
         {choice === "all" && <> Shown in the {lookLabel} look: pick a client on the left to change it.</>}
       </p>
 
-      <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[11rem_minmax(0,1fr)]">
-        <section aria-labelledby="tray" className="min-w-0">
-          <h2 id="tray" className="mb-2 text-xs font-semibold text-foreground">
-            Pieces
-          </h2>
-          <ul className="flex gap-2 overflow-x-auto pb-2 lg:max-h-[46rem] lg:flex-col lg:overflow-y-auto lg:overflow-x-visible lg:pb-0 lg:pr-1">
-            {tray.map((meta) => (
-              <li key={meta.id} className="shrink-0">
-                <button
-                  type="button"
-                  draggable
-                  disabled={full}
-                  onDragStart={(event) => {
-                    event.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ id: meta.id }))
-                    event.dataTransfer.effectAllowed = "move"
-                  }}
-                  onClick={() => add(meta.id)}
-                  aria-label={`Add ${meta.name}`}
-                  className="group flex w-full cursor-grab items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-left text-sm transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <span>
-                    <span className="block font-medium">{meta.name}</span>
-                    <span className="block text-xs text-muted-foreground">{GROUPS.find((group) => group.id === meta.group)?.label}</span>
-                  </span>
-                  <Plus aria-hidden="true" className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
-                </button>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 text-xs text-muted-foreground">{full ? `A page holds up to ${MAX_ITEMS} pieces.` : "Drag onto the page, or tap to add at the end."}</p>
-        </section>
+      <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[12rem_minmax(0,1fr)]">
+        <div className="min-w-0 space-y-5 lg:max-h-[50rem] lg:overflow-y-auto lg:pr-1">
+          <section aria-labelledby="structures" className="min-w-0">
+            <h2 id="structures" className="mb-2 text-xs font-semibold text-foreground">
+              1. Structure
+            </h2>
+            <ul className="flex gap-2 overflow-x-auto pb-2 lg:grid lg:grid-cols-2 lg:overflow-visible lg:pb-0">
+              {STRUCTURES.map((structure) => (
+                <li key={structure.key} className="shrink-0">
+                  <button
+                    type="button"
+                    draggable
+                    disabled={full}
+                    onDragStart={(event) => {
+                      const item = structureItem(structure)
+                      if (!item) return
+                      event.dataTransfer.setData(DRAG_TYPE, JSON.stringify(item.p ? { id: item.id, p: item.p } : { id: item.id }))
+                      event.dataTransfer.effectAllowed = "move"
+                    }}
+                    onClick={() => addStructure(structure)}
+                    aria-label={`Add structure: ${structure.label}`}
+                    title={structure.label}
+                    className="group block w-24 cursor-grab rounded-lg border bg-card p-2 text-left transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50 lg:w-full"
+                  >
+                    <Wireframe structure={structure} />
+                    <span className="mt-1.5 block truncate text-[0.6875rem] text-muted-foreground group-hover:text-foreground">{structure.label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section aria-labelledby="tray" className="min-w-0">
+            <h2 id="tray" className="mb-2 text-xs font-semibold text-foreground">
+              2. Pieces
+            </h2>
+            <p className="mb-2 text-xs text-muted-foreground" aria-live="polite">
+              {full ? `A page holds up to ${MAX_ITEMS} pieces.` : slotPicked ? "Tap a piece to add it to the picked space." : "Tap “Add a piece” on the page, then a piece here. Or drag one over."}
+            </p>
+            <ul className="flex gap-2 overflow-x-auto pb-2 lg:flex-col lg:overflow-x-visible lg:pb-0">
+              {tray.map((meta) => (
+                <li key={meta.id} className="shrink-0">
+                  <button
+                    type="button"
+                    draggable
+                    disabled={full}
+                    onDragStart={(event) => {
+                      event.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ id: meta.id }))
+                      event.dataTransfer.effectAllowed = "move"
+                    }}
+                    onClick={() => add(meta.id)}
+                    aria-label={`Add ${meta.name}`}
+                    className={cn(
+                      "group flex w-full cursor-grab items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-left text-sm transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50",
+                      slotPicked && "border-primary/40",
+                    )}
+                  >
+                    <span>
+                      <span className="block font-medium">{meta.name}</span>
+                      <span className="block text-xs text-muted-foreground">{GROUPS.find((group) => group.id === meta.group)?.label}</span>
+                    </span>
+                    <Plus aria-hidden="true" className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
 
         <section aria-labelledby="page" className="min-w-0">
           <h2 id="page" className="sr-only">
@@ -198,7 +259,7 @@ export default function ClientPlayground() {
 
       <section aria-labelledby="piece-options" className="mt-10">
         <h2 id="piece-options" className="text-xl font-semibold tracking-tight">
-          {currentMeta ? `${currentMeta.name} options` : "Options"}
+          {currentMeta ? `${currentMeta.group === "layout" ? "Structure" : currentMeta.name} options` : "Options"}
         </h2>
         <div className="mt-4">
           {current && currentMeta ? (
@@ -210,10 +271,31 @@ export default function ClientPlayground() {
               onChange={(props) => selected && setItems(replaceAt(items, selected, withProps(current, props)))}
             />
           ) : (
-            <p className="text-sm text-muted-foreground">Click a piece on the page to change its words and options.</p>
+            <p className="text-sm text-muted-foreground">
+              {slotPicked ? "Adding to the picked space: tap a piece in the list." : "Click a piece on the page to change its words and options."}
+            </p>
           )}
         </div>
       </section>
     </div>
+  )
+}
+
+/** A structure as a small picture: its slots as blocks, in their shares of the width. */
+function Wireframe({ structure }: { structure: Structure }) {
+  return (
+    <span aria-hidden="true" className="flex h-9 flex-col gap-1">
+      {Array.from({ length: structure.rows ?? 1 }, (_, row) => (
+        <span key={row} className={cn("flex min-h-0 flex-1 gap-1", structure.loose && "items-center justify-start")}>
+          {structure.cells.map((share, index) => (
+            <span
+              key={index}
+              className={cn("rounded-sm bg-muted-foreground/25 group-hover:bg-primary/40", structure.loose ? "h-1/2 rounded-full" : "h-full")}
+              style={structure.loose ? { width: `${share * 12}%` } : { flex: `${share} 1 0` }}
+            />
+          ))}
+        </span>
+      ))}
+    </span>
   )
 }

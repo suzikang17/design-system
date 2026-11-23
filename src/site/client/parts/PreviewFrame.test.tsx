@@ -111,6 +111,16 @@ describe("the frame follows the height the piece reports", () => {
       )
     })
 
+  it("answers the page in the frame with the latest state when it says it is ready, and no one else", () => {
+    renderFrame("desktop")
+    const post = vi.spyOn(frame().contentWindow!, "postMessage")
+    report({ type: "ds:ready" }, { source: window })
+    report({ type: "ds:ready" }, { origin: "https://example.com" })
+    expect(post).not.toHaveBeenCalled()
+    report({ type: "ds:ready" })
+    expect(post).toHaveBeenCalledWith({ type: "ds:state", search: "look=wecuratelife" }, window.location.origin)
+  })
+
   it("grows to a tall piece and shrinks back to the minimum for a short one", () => {
     observeWidth(2000)
     renderFrame("desktop")
