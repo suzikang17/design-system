@@ -41,9 +41,11 @@ describe("PreviewFrame", () => {
     observeWidth(600)
     renderFrame("tablet")
     expect(frame().style.width).toBe("768px")
-    expect(frame().style.transform).toBe(`scale(${600 / 768})`)
-    expect(frame().style.height).toBe(`${420 / (600 / 768)}px`)
-    expect(screen.getByText("768px wide, shown at 78%")).toBeInTheDocument()
+    // the tablet's own frame takes 16px a side, and a tablet is at least 560px tall
+    const scale = (600 - 32) / 768
+    expect(frame().style.transform).toBe(`scale(${scale})`)
+    expect(frame().style.height).toBe(`${560 / scale}px`)
+    expect(screen.getByText("768px wide, shown at 74%")).toBeInTheDocument()
   })
 
   it("leaves a width that fits at full size, with no note", () => {
@@ -52,6 +54,27 @@ describe("PreviewFrame", () => {
     expect(frame().style.width).toBe("390px")
     expect(frame().style.transform).toBe("")
     expect(screen.queryByText(/shown at/)).not.toBeInTheDocument()
+  })
+
+  it("draws the device the size stands for: a monitor, a tablet, or a phone that is tall and takes the look's paper in its status bar", () => {
+    observeWidth(1000)
+    const view = renderFrame("desktop")
+    const device = () => view.container.querySelector("[data-device]")!
+    expect(device()).toHaveAttribute("data-device", "desktop")
+    expect(frame().style.height).toBe("420px")
+    for (const size of ["tablet", "phone"] as const) {
+      view.rerender(
+        <MemoryRouter>
+          <PreviewFrame meta={input} search="look=wecuratelife" size={size} />
+        </MemoryRouter>,
+      )
+      expect(device()).toHaveAttribute("data-device", size)
+    }
+    expect(frame().style.height).toBe("700px")
+    const bar = view.container.querySelector("[data-status-bar]")!
+    expect(bar).toHaveClass("ds-root")
+    expect(bar).toHaveAttribute("data-theme", "wecuratelife")
+    expect(bar).toHaveAttribute("aria-hidden", "true")
   })
 
   it("keeps its first search as the src and posts later ones", () => {
