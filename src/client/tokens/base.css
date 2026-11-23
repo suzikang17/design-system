@@ -1,0 +1,14 @@
+.ds-root {
+  background: var(--ds-color-paper);
+  color: var(--ds-color-ink);
+  font-family: var(--ds-font-paragraph);
+  font-size: var(--ds-text-base);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.ds-root *,
+.ds-root *::before,
+.ds-root *::after {
+  box-sizing: border-box;
+}

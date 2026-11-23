@@ -1,0 +1,5 @@
+/* Every theme plus the base rules: imported once by the catalog entry (main.tsx) and by the preview page. */
+@import "./themes/neutral.css";
+@import "./themes/urlovematters.css";
+@import "./themes/wecuratelife.css";
+@import "./base.css";

@@ -34,3 +34,14 @@ window.matchMedia ??= (query: string) =>
 Element.prototype.scrollIntoView ??= function scrollIntoView() {}
 Element.prototype.hasPointerCapture ??= () => false
 Element.prototype.releasePointerCapture ??= () => {}
+
+// jsdom has no showModal/close on <dialog> (the client Modal uses the native element): open/close the
+// attribute and fire `close`, as the platform does.
+HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
+  this.setAttribute("open", "")
+}
+HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
+  if (!this.hasAttribute("open")) return
+  this.removeAttribute("open")
+  this.dispatchEvent(new Event("close"))
+}

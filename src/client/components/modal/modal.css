@@ -1,0 +1,142 @@
+/* Modal: a native <dialog> card. The dialog element is the card, so a click that targets it is a backdrop click. */
+.ds-modal {
+  /* component-level values (no contract token) */
+  --_ds-modal-width: 640px;
+  --_ds-modal-edge: 20px;
+  --_ds-modal-blur: 10px;
+  --_ds-modal-lift: 12px;
+
+  box-sizing: border-box;
+  width: min(calc(100% - 2 * var(--_ds-modal-edge)), var(--_ds-modal-width));
+  max-width: none;
+  max-height: 88dvh;
+  margin: auto;
+  padding: 0;
+  display: none;
+  flex-direction: column;
+  border: 0;
+  /* live card radius is 16px against an 8px theme radius: twice the theme radius, so a square theme stays square */
+  border-radius: calc(2 * var(--ds-radius));
+  background: var(--ds-color-paper);
+  color: var(--ds-color-ink);
+  box-shadow: 0 24px 64px rgb(var(--ds-shade) / 0.35);
+  overflow: hidden;
+  font-family: var(--ds-font-paragraph);
+  font-size: var(--ds-text-base);
+  /* enter: fade and rise; exit runs the same transition back before the dialog leaves the top layer */
+  opacity: 0;
+  translate: 0 var(--_ds-modal-lift);
+  transition:
+    opacity var(--ds-dur-fast) var(--ds-ease-out),
+    translate var(--ds-dur-fast) var(--ds-ease-out),
+    display var(--ds-dur-fast) allow-discrete,
+    overlay var(--ds-dur-fast) allow-discrete;
+}
+
+.ds-modal[open] {
+  display: flex;
+  opacity: 1;
+  translate: 0 0;
+}
+
+@starting-style {
+  .ds-modal[open] {
+    opacity: 0;
+    translate: 0 var(--_ds-modal-lift);
+  }
+}
+
+.ds-modal::backdrop {
+  background: color-mix(in srgb, var(--ds-color-panel) 96%, transparent);
+  backdrop-filter: blur(var(--_ds-modal-blur));
+  opacity: 0;
+  transition:
+    opacity var(--ds-dur-fast) var(--ds-ease-out),
+    display var(--ds-dur-fast) allow-discrete,
+    overlay var(--ds-dur-fast) allow-discrete;
+}
+
+.ds-modal[open]::backdrop {
+  opacity: 1;
+}
+
+@starting-style {
+  .ds-modal[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+.ds-modal__head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px var(--_ds-modal-edge);
+  border-bottom: 1px solid var(--ds-color-rule);
+}
+
+.ds-modal__title {
+  min-width: 0;
+  margin: 0;
+  font-family: var(--ds-font-title);
+  font-size: 1.5rem;
+  font-weight: var(--ds-weight-heading);
+  font-style: italic;
+  line-height: var(--ds-leading-heading);
+  letter-spacing: var(--ds-track-title);
+  text-transform: var(--ds-case-title);
+  color: var(--ds-color-ink);
+  overflow-wrap: anywhere;
+}
+
+.ds-modal__close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 9px;
+  border: 0;
+  background: none;
+  color: var(--ds-color-ink-soft);
+  cursor: pointer;
+  transition: color var(--ds-dur-fast) var(--ds-ease-out);
+}
+
+.ds-modal__close:hover {
+  color: var(--ds-color-ink);
+}
+
+.ds-modal__close:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.ds-modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 18px var(--_ds-modal-edge);
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+
+.ds-modal__actions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px var(--_ds-modal-edge) 20px;
+  border-top: 1px solid var(--ds-color-rule);
+}
+
+.ds-modal__actions > * {
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-modal,
+  .ds-modal::backdrop,
+  .ds-modal__close {
+    transition: none;
+  }
+}

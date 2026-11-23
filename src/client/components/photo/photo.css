@@ -1,0 +1,104 @@
+/* Honesty note: print and plain are ported from live sites (We Curate Life gallery, ur love matters);
+   mat is ported from a rule on that site that is not in use; cameo and arch are new designs drawn from notes in
+   the We Curate Life source, not shipped client work.
+   Photo: one image in one of five frames. The figure carries the tilt and the print's drop shadow; the well
+   carries the frame (mat, mask, ring, radius) and clips the zoom; the img only fills the well. */
+.ds-photo {
+  --_ds-photo-zoom-dur: 0.7s; /* hover zoom, taken from the ur love matters gallery */
+  --_ds-photo-zoom: 1.05;
+  --_ds-photo-hairline: rgb(var(--ds-shade) / 0.06); /* the plain frame's edge on ur love matters */
+  /* the print's white mat: a paper white, the same in every theme, so not a contract role */
+  --_ds-photo-white: #ffffff; /* ds-allow-literal: the white print mat is a fixed paper colour, not a theme role */
+  /* the print's torn edge: alpha masks (only the shape matters), the same in every theme */
+  --_ds-photo-deckle: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='400' viewBox='0 0 300 400' preserveAspectRatio='none'><filter id='d' x='-5%' y='-5%' width='110%' height='110%'><feTurbulence type='fractalNoise' baseFrequency='.07' numOctaves='3' seed='9'/><feDisplacementMap in='SourceGraphic' scale='7'/></filter><rect x='5' y='5' width='290' height='390' fill='black' filter='url(%23d)'/></svg>");
+  --_ds-photo-deckle-sm: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='160' viewBox='0 0 120 160' preserveAspectRatio='none'><filter id='d' x='-5%' y='-5%' width='110%' height='110%'><feTurbulence type='fractalNoise' baseFrequency='.16' numOctaves='3' seed='4'/><feDisplacementMap in='SourceGraphic' scale='5'/></filter><rect x='3' y='3' width='114' height='154' fill='black' filter='url(%23d)'/></svg>");
+  margin: 0;
+  display: block;
+  /* fills its container; maxWidth caps it */
+  inline-size: min(100%, var(--_ds-photo-width, 100%));
+  rotate: var(--_ds-photo-tilt, 0deg);
+}
+.ds-photo__well {
+  display: block;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.ds-photo--fixed .ds-photo__well { aspect-ratio: var(--_ds-photo-ratio); }
+.ds-photo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+.ds-photo--fixed img { height: 100%; object-fit: cover; }
+
+/* plain: the photo with a soft corner and a hairline */
+.ds-photo--plain .ds-photo__well {
+  border: 1px solid var(--_ds-photo-hairline);
+  border-radius: var(--ds-radius);
+}
+
+/* print: a torn-edged paper print; plate-coloured mat, deckle mask, shadow on the figure */
+.ds-photo--print { filter: var(--ds-shadow-print); }
+.ds-photo--print .ds-photo__well {
+  padding: clamp(6px, 0.8vw, 12px);
+  background: var(--ds-color-plate);
+  -webkit-mask: var(--_ds-photo-deckle) 0 0 / 100% 100% no-repeat;
+  mask: var(--_ds-photo-deckle) 0 0 / 100% 100% no-repeat;
+}
+
+.ds-photo--print.ds-photo--white .ds-photo__well { background: var(--_ds-photo-white); }
+/* small: the narrower mat and finer torn edge */
+.ds-photo--print.ds-photo--small .ds-photo__well {
+  padding: clamp(4px, 0.5vw, 7px);
+  -webkit-mask-image: var(--_ds-photo-deckle-sm);
+  mask-image: var(--_ds-photo-deckle-sm);
+}
+
+/* mat: paper around the photo inside a hairline (the About portrait) */
+.ds-photo--mat .ds-photo__well {
+  padding: 12px;
+  background: var(--ds-color-paper);
+  border: 1px solid var(--ds-color-ink);
+}
+
+/* cameo: an oval inside a double hairline ring */
+.ds-photo--cameo .ds-photo__well {
+  padding: 10px;
+  background: var(--ds-color-paper);
+  border: 1px solid var(--ds-color-ink);
+  border-radius: 50%;
+}
+.ds-photo--cameo img {
+  border-radius: 50%;
+  outline: 1px solid var(--ds-color-ink);
+  outline-offset: 4px;
+}
+
+/* arch: a storybook window, round-topped, with a hairline traced around it */
+.ds-photo--arch .ds-photo__well {
+  padding: 6px;
+  background: var(--ds-color-paper);
+  border: 1px solid var(--ds-color-ink);
+  border-radius: 999px 999px 0 0;
+}
+.ds-photo--arch img { border-radius: 999px 999px 0 0; }
+
+/* hover zoom: the image grows inside the frame, which clips it */
+.ds-photo--zoom img { transition: transform var(--_ds-photo-zoom-dur) var(--ds-ease-out); }
+@media (hover: hover) {
+  .ds-photo--zoom:hover img { transform: scale(var(--_ds-photo-zoom)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-photo--zoom img { transition: none; }
+  .ds-photo--zoom:hover img { transform: none; }
+}
+
+.ds-photo__caption {
+  margin-block-start: 0.75em;
+  font-family: var(--ds-font-label);
+  font-size: var(--ds-text-xs);
+  letter-spacing: var(--ds-track-label);
+  text-transform: var(--ds-case-label);
+  color: var(--ds-color-ink-soft);
+}

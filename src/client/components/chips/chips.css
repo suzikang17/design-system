@@ -1,0 +1,103 @@
+/* Chips: pill tags with a star mark; optional staggered rise. */
+.ds-chips {
+  /* component-level (no contract token) */
+  --_ds-chips-step: 60ms;
+  --_ds-chips-base-delay: 40ms;
+  --_ds-chips-gap: 10px;
+  --_ds-chips-lift: 2px;
+  --_ds-chips-fade-dur: 0.5s;
+  --_ds-chips-star-dur: 0.35s;
+
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--_ds-chips-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ds-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 9px 17px;
+  border: 1px solid var(--ds-color-rule);
+  border-radius: 999px;
+  background: linear-gradient(160deg, var(--ds-color-panel-alt), var(--ds-color-paper));
+  color: var(--ds-color-ink-soft);
+  font-family: var(--ds-font-label);
+  font-size: var(--ds-text-xs);
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+  transition:
+    opacity var(--_ds-chips-fade-dur) var(--ds-ease-out),
+    transform var(--ds-dur-fast) var(--ds-ease-out),
+    background-color var(--ds-dur-fast) var(--ds-ease-out),
+    border-color var(--ds-dur-fast) var(--ds-ease-out),
+    box-shadow var(--ds-dur-fast) var(--ds-ease-out),
+    color var(--ds-dur-fast) var(--ds-ease-out);
+}
+
+.ds-chip::before {
+  content: '\2726';
+  flex: none;
+  margin-right: 8px;
+  font-size: 0.72em;
+  line-height: 1;
+  color: var(--ds-color-accent);
+  filter: brightness(0.85);
+  transition: transform var(--_ds-chips-star-dur) var(--ds-ease-out);
+}
+
+@media (hover: hover) {
+  .ds-chip:hover {
+    transform: translateY(calc(var(--_ds-chips-lift) * -1));
+    background: var(--ds-color-accent-soft);
+    border-color: var(--ds-color-accent);
+    color: var(--ds-color-ink);
+    box-shadow: 0 10px 20px -14px rgb(var(--ds-shade) / 0.6);
+    transition-delay: 0s;
+  }
+  .ds-chip:hover::before {
+    transform: rotate(90deg) scale(1.15);
+  }
+}
+
+/* staggered rise: hidden until the group is in view, then each chip runs a keyframe rise 60ms after the
+   previous. A keyframe (fill: backwards) rather than a transition delay, so hover stays instant afterwards. */
+.ds-chips--stagger .ds-chip {
+  opacity: 0;
+}
+
+.ds-chips--stagger.is-in .ds-chip {
+  opacity: 1;
+  animation: ds-chips-rise var(--_ds-chips-fade-dur) var(--ds-ease-out) backwards;
+  /* capped: chips past the ninth start with the ninth (.52s, as the source caps it) */
+  animation-delay: calc(var(--_ds-chips-base-delay) + var(--_ds-chips-step) * min(var(--i, 0), 8));
+}
+
+@keyframes ds-chips-rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--ds-rise));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-chip,
+  .ds-chip::before {
+    transition: none;
+  }
+  .ds-chips--stagger .ds-chip,
+  .ds-chips--stagger.is-in .ds-chip {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+  .ds-chip:hover,
+  .ds-chip:hover::before,
+  .ds-chips--stagger.is-in .ds-chip:hover {
+    transform: none;
+  }
+}

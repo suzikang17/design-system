@@ -1,0 +1,70 @@
+@import "@fontsource/cormorant/500.css";
+@import "@fontsource/inter-tight/400.css";
+
+[data-theme="urlovematters"] {
+  --ds-color-paper: #fefaf6;
+  --ds-color-panel: #f5ede3;
+  --ds-color-panel-alt: #f7f3fe;
+  --ds-color-ink: #050100;
+  --ds-color-ink-soft: rgba(5, 1, 0, 0.62);
+  --ds-color-rule: rgba(5, 1, 0, 0.12);
+  --ds-color-rule-strong: rgba(5, 1, 0, 0.24);
+  --ds-color-accent: #e9c3c9;
+  --ds-color-accent-soft: #f6e2e5;
+  --ds-color-on-photo: #ffffff;
+  --ds-color-on-ink: #ffffff;
+  --ds-shade: 5 1 0;
+  --ds-color-field-border: rgba(5, 1, 0, 0.16);
+  --ds-color-placeholder: #9a8b86;
+  --ds-color-error: #a04646;
+  --ds-button-text: 13.76px;
+  --ds-button-track: 0.06em;
+  --ds-button-pad: 15px 30px;
+  --ds-button-pad-outline: 15px 40px;
+  --ds-button-fill-border: 0;
+
+  --ds-font-heading: "Cormorant", serif;
+  --ds-font-heading-alt: "Cormorant", serif;
+  --ds-font-title: "Cormorant", serif;
+  --ds-font-label: "Inter Tight", sans-serif;
+  --ds-font-mono: var(--ds-font-paragraph);
+  --ds-font-field: var(--ds-font-paragraph);
+  --ds-font-paragraph: "Inter Tight", sans-serif;
+  --ds-font-accent: "Cormorant", serif;
+  --ds-weight-heading: 500;
+  --ds-leading-heading: 1.05;
+
+  --ds-case-heading: none;
+  --ds-case-title: none;
+  --ds-case-label: none;
+  --ds-track-heading: -0.01em;
+  --ds-track-title: -0.01em;
+  --ds-track-label: 0.06em;
+  --ds-scale-heading: 1;
+  --ds-scale-title: 1;
+
+  --ds-text-xs: 12px;
+  --ds-text-sm: 14px;
+  --ds-text-base: 16px;
+  --ds-text-lg: 19px;
+  --ds-text-xl: 28px;
+  --ds-text-quote: clamp(26px, 2.8vw, 40px);
+
+  --ds-gutter: clamp(20px, 4vw, 56px);
+  --ds-space-stack: clamp(72px, 10vw, 140px);
+  --ds-space-section: clamp(80px, 11vw, 120px);
+
+  --ds-ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ds-ease-spring: cubic-bezier(0.34, 1.3, 0.5, 1);
+  --ds-dur-fast: 0.25s;
+  --ds-dur-reveal: 0.9s;
+  --ds-rise: 12px;
+
+  --ds-radius: 8px;
+  --ds-radius-button: 0;
+
+  --ds-shadow-print: drop-shadow(0 8px 16px rgb(var(--ds-shade) / 0.12));
+  --ds-shadow-panel: 0 16px 28px -16px rgb(var(--ds-shade) / 0.3);
+  --ds-grain: none;
+  --ds-color-plate: #fffdfa;
+}
