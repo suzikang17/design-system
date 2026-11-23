@@ -49,6 +49,7 @@ the Tailwind site's themes, which do not restyle client pieces. The look's query
 - Once a look is in use elsewhere, a new contract token is read with a fallback (`var(--ds-new, <old behaviour>)`),
   so looks copied out earlier keep working.
 - Do not fix a visual difference in a component. Fix it in `src/client/tokens/base.css`, scoped to `.ds-root`.
+  `base.css` ships to every consumer, so it holds only `.ds-root` rules and no bare element selector (a test checks). A rule that only the catalog needs goes in `tokens/all.css`, which does not ship.
 
 ## Meta
 

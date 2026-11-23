@@ -3,3 +3,11 @@
 @import "./themes/urlovematters.css";
 @import "./themes/wecuratelife.css";
 @import "./base.css";
+
+/* Catalog only, not shipped (client-base does not list this file). Tailwind's preflight zeroes `p` margins; a bare
+   paragraph inside a piece (the Modal demo's body text) keeps the browser's own 1em block margins here. This is not
+   in base.css because base.css ships: in a consumer's Tailwind project it would override their own paragraphs.
+   :where() keeps it weaker than any class rule. */
+:where(.ds-root) p {
+  margin-block: 1em;
+}

@@ -12,9 +12,3 @@
 .ds-root *::after {
   box-sizing: border-box;
 }
-
-/* Counters Tailwind preflight's `p { margin: 0 }`: a bare paragraph inside a piece (the Modal demo's body text) keeps
-   the browser's own 1em block margins, as in the standalone build. :where() keeps it weaker than any class rule. */
-:where(.ds-root) p {
-  margin-block: 1em;
-}

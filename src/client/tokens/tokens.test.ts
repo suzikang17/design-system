@@ -282,3 +282,17 @@ describe('neutral theme contrast', () => {
     expect(contrast(parseColour(value('--ds-color-field-border'), paper), paper)).toBeGreaterThanOrEqual(3)
   })
 })
+
+describe('base.css ships to consumers', () => {
+  it('has only the rules it had before the integration, and no bare element selector', () => {
+    const css = readFileSync(join(import.meta.dirname, 'base.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    const selectors = [...css.matchAll(/([^{}]+){/g)].flatMap((m) => (m[1] ?? '').split(',').map((s) => s.trim()))
+    expect(selectors).toEqual(['.ds-root', '.ds-root *', '.ds-root *::before', '.ds-root *::after'])
+  })
+
+  it('keeps the catalog-only paragraph margin out of the shipped files', () => {
+    const dir = import.meta.dirname
+    expect(readFileSync(join(dir, 'base.css'), 'utf8')).not.toMatch(/\bp\s*{/)
+    expect(readFileSync(join(dir, 'all.css'), 'utf8')).toMatch(/:where\(\.ds-root\) p/)
+  })
+})
