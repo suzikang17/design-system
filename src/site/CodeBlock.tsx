@@ -3,19 +3,19 @@ import { useEffect, useState } from "react"
 import { CopyButton } from "./CopyButton"
 import { highlight } from "./highlight"
 
-export function CodeBlock({ code, filename }: { code: string; filename: string }) {
+export function CodeBlock({ code, filename, lang }: { code: string; filename: string; lang?: "tsx" | "css" }) {
   const [html, setHtml] = useState<string>()
 
   useEffect(() => {
     let live = true
     setHtml(undefined)
-    highlight(code)
+    highlight(code, lang)
       .then((result) => live && setHtml(result))
       .catch(() => undefined) // Plain text stays on screen.
     return () => {
       live = false
     }
-  }, [code])
+  }, [code, lang])
 
   return (
     <div className="overflow-hidden rounded-lg border bg-card">

@@ -28,8 +28,8 @@ const fixture = defineMeta<{ tags: string[]; count: number; on: boolean; label: 
 })
 
 describe('state', () => {
-  it('encodes defaults as exactly the theme', () => {
-    expect(encodeState(button, { theme: 'urlovematters', props: { ...button.defaults } })).toBe('theme=urlovematters')
+  it('encodes defaults as exactly the look', () => {
+    expect(encodeState(button, { theme: 'urlovematters', props: { ...button.defaults } })).toBe('look=urlovematters')
   })
 
   it('round-trips changed props on the button', () => {
@@ -53,8 +53,14 @@ describe('state', () => {
     expect(JSON.parse(atob(raw.replace(/-/g, '+').replace(/_/g, '/')))).toEqual({ count: 4 })
   })
 
-  it('falls back to homeTheme for an unknown theme', () => {
-    expect(decodeState(button, 'theme=bogus').theme).toBe('urlovematters')
+  it('reads the look from `look`, not from the site theme parameter', () => {
+    expect(decodeState(button, 'look=neutral').theme).toBe('neutral')
+    expect(decodeState(button, 'theme=neutral').theme).toBe('urlovematters')
+    expect(decodeState(button, 'theme=midnight&look=wecuratelife').theme).toBe('wecuratelife')
+  })
+
+  it('falls back to homeTheme for an unknown look', () => {
+    expect(decodeState(button, 'look=bogus').theme).toBe('urlovematters')
   })
 
   it('drops unknown keys, wrong types and bad list items', () => {
@@ -87,8 +93,8 @@ describe('state', () => {
     expect(decodeState(button, search)).toEqual({ theme: 'urlovematters', props: button.defaults })
   })
 
-  it('applies a valid theme even when p is broken', () => {
-    expect(decodeState(button, 'theme=urlovematters&p=%%%').theme).toBe('urlovematters')
+  it('applies a valid look even when p is broken', () => {
+    expect(decodeState(button, 'look=neutral&p=%%%').theme).toBe('neutral')
   })
 
   describe('hardening', () => {
@@ -126,7 +132,7 @@ describe('state', () => {
       const long = p({ label: 'x'.repeat(1500), count: 5 })
       expect(decodeState(fixture, long).props.count).toBe(5)
       const over = `p=${'A'.repeat(20001)}`
-      expect(decodeState(fixture, `theme=urlovematters&${over}`).props).toEqual(d)
+      expect(decodeState(fixture, `look=urlovematters&${over}`).props).toEqual(d)
       expect(decodeState(fixture, p({ count: 5, label: 'x'.repeat(15000) })).props).toEqual(d)
     })
   })

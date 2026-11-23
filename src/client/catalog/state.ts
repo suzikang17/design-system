@@ -71,18 +71,19 @@ export function encodeState<P extends object>(meta: ComponentMeta<P>, state: Pre
     if (v === undefined || JSON.stringify(v) === JSON.stringify(defaults[key])) continue
     changed[key] = v
   }
-  const params = new URLSearchParams({ theme: state.theme })
+  const params = new URLSearchParams({ look: state.theme })
   if (Object.keys(changed).length > 0) params.set('p', toBase64Url(JSON.stringify(changed)))
   return params.toString()
 }
 
-/** Never throws: anything unusable falls back to the meta's home theme and defaults. */
+/** Never throws: anything unusable falls back to the meta's home theme and defaults. The look is read from
+ *  `look` (the site keeps `theme` for its own themes); options from `p`. */
 export function decodeState<P extends object>(meta: ComponentMeta<P>, search: string): PreviewState {
   const defaults = meta.defaults as Record<string, unknown>
   const state: PreviewState = { theme: meta.homeTheme, props: { ...defaults } }
   try {
     const params = new URLSearchParams(search)
-    const theme = params.get('theme')
+    const theme = params.get('look')
     if (isThemeId(theme)) state.theme = theme
     const raw = params.get('p')
     if (!raw || raw.length > MAX_P_LENGTH) return state

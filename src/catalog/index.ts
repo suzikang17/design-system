@@ -55,7 +55,7 @@ export interface CatalogEntry {
 }
 
 /** The dependencies of `/r/<name>.json`, as the shadcn CLI will install them. */
-async function publishedDependencies(name: string): Promise<PublishedDependencies> {
+export async function publishedDependencies(name: string): Promise<PublishedDependencies> {
   const response = await fetch(`/r/${name}.json`)
   if (!response.ok) throw new Error(`/r/${name}.json answered ${response.status}`)
   const item = (await response.json()) as { dependencies?: string[]; registryDependencies?: string[] }

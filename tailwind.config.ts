@@ -86,6 +86,10 @@ export default {
           from: { transform: "translateY(0)" },
           to: { transform: "translateY(calc(-100% - var(--gap)))" },
         },
+        // The client looks' easing demo: a dot that rests at the end of its track travels there from the start.
+        travel: {
+          from: { left: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -93,6 +97,7 @@ export default {
         "caret-blink": "caret-blink 1.25s ease-out infinite",
         marquee: "marquee var(--duration) infinite linear",
         "marquee-vertical": "marquee-vertical var(--duration) linear infinite",
+        travel: "travel var(--ds-dur-reveal) both",
       },
     },
   },
