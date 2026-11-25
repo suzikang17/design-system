@@ -131,12 +131,10 @@ describe("the playground", () => {
     expect(told(post).items).toEqual(page(["button", "chips"]))
   })
 
-  it("Clear page empties it and Start over brings the starter back", async () => {
+  it("Start over brings the starter back, and there is no button that empties the page", async () => {
     renderPlayground(`/client/playground?page=${encodeItems(page(["chips"]))}`)
     const post = vi.spyOn(frame().contentWindow!, "postMessage")
-    await userEvent.click(screen.getByRole("button", { name: "Clear page" }))
-    expect(told(post).items).toEqual([])
-    expect(screen.getByRole("button", { name: "Clear page" })).toBeDisabled()
+    expect(screen.queryByRole("button", { name: "Clear page" })).toBeNull()
     await userEvent.click(screen.getByRole("button", { name: "Start over" }))
     expect(told(post).items).toEqual(starterPage())
   })

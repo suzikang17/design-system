@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
-import { Check, Link2, Plus, RotateCcw, Trash2 } from "lucide-react"
+import { Check, Link2, Plus, RotateCcw } from "lucide-react"
 
 import { GROUPS } from "@/client/catalog/registry"
 import { THEMES } from "@/client/tokens/contract"
@@ -160,18 +160,6 @@ export default function ClientPlayground() {
           >
             <RotateCcw aria-hidden="true" />
             Start over
-          </PillButton>
-          <PillButton
-            variant="outline"
-            className="gap-1.5"
-            disabled={items.length === 0}
-            onClick={() => {
-              setItems([])
-              setSelected(null)
-            }}
-          >
-            <Trash2 aria-hidden="true" />
-            Clear page
           </PillButton>
           <PillButton className="gap-1.5" onClick={copyLink}>
             {copied ? <Check aria-hidden="true" /> : <Link2 aria-hidden="true" />}
