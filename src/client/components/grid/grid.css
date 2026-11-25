@@ -1,0 +1,23 @@
+/* Grid: equal cells in rows. A column is the wider of `min` and an even share of `columns`, so there are never
+   more than `columns` and never one narrower than `min` (or than the grid itself, on a very narrow screen). */
+.ds-grid {
+  --_ds-grid-gap: 24px;
+  --_ds-grid-columns: 3;
+  --_ds-grid-min: 220px;
+  --_ds-grid-share: calc((100% - (var(--_ds-grid-columns) - 1) * var(--_ds-grid-gap)) / var(--_ds-grid-columns));
+
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, max(var(--_ds-grid-min), var(--_ds-grid-share))), 1fr));
+  gap: var(--_ds-grid-gap);
+  min-inline-size: 0;
+}
+.ds-grid > * { min-inline-size: 0; }
+.ds-grid--gap-none { --_ds-grid-gap: 0px; }
+.ds-grid--gap-xs { --_ds-grid-gap: 8px; }
+.ds-grid--gap-sm { --_ds-grid-gap: 16px; }
+.ds-grid--gap-lg { --_ds-grid-gap: 40px; }
+.ds-grid--gap-xl { --_ds-grid-gap: 64px; }
+.ds-grid--start { align-items: start; }
+.ds-grid--center { align-items: center; }
+.ds-grid--end { align-items: end; }
+.ds-grid--stretch { align-items: stretch; }

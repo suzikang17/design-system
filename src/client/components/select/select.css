@@ -1,0 +1,165 @@
+/* Select. Sits beside Input in a form: it takes the field custom properties (--_ds-field-pad, --_ds-field-line,
+   sizes) from input.css via the shared `ds-field ds-field--<variant>` wrapper. Measured on the live We Curate Life
+   contact form: button 44px high, 13px hint in the mono face (11px under 760px), 14px chosen value; panel on
+   paper with a hairline border, 11px 16px options at 15px. */
+.ds-select {
+  /* component-level (no contract token) */
+  --_ds-select-chevron-dur: 0.3s;
+  --_ds-select-min-height: 44px;
+  --_ds-select-option-size: 15px;
+  --_ds-select-hover: 8%;
+  --_ds-select-hint-size: var(--_ds-field-placeholder-size);
+  /* long lists scroll inside the panel: about six options, never more than 60% of the viewport */
+  --_ds-select-panel-max: min(288px, 60vh);
+  /* keyboard focus: a line down the option's leading edge, on top of the hover tint */
+  --_ds-select-focus-line: 2px;
+
+  position: relative;
+  gap: 0;
+  /* a floor so the closed button does not change width when a value is chosen */
+  min-width: min(100%, 280px);
+}
+
+/* the accessible name, off screen; the visible hint is the button's own text */
+.ds-select__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ds-select__button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--_ds-select-min-height);
+  padding: var(--_ds-field-pad);
+  padding-block: 10px;
+  border: 0;
+  border-bottom: 1px solid var(--_ds-field-line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ds-color-ink);
+  font: inherit;
+  font-size: var(--_ds-field-size);
+  letter-spacing: var(--_ds-field-track);
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  transition: border-color var(--ds-dur-fast) var(--ds-ease-out);
+}
+
+.ds-field--box .ds-select__button {
+  border: 1px solid var(--_ds-field-line);
+  padding-block: 10px;
+}
+
+/* until something is chosen the button shows the hint, in the placeholder colour and size */
+.ds-select:not(.is-chosen) .ds-select__button {
+  color: var(--ds-color-ink-soft);
+  font-size: var(--_ds-select-hint-size);
+}
+
+.ds-select__button:focus-visible {
+  border-color: var(--_ds-field-focus);
+}
+
+.ds-field--line .ds-select__button:focus-visible {
+  box-shadow: 0 1px 0 var(--_ds-field-focus);
+}
+
+.ds-select__button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ds-select__value {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ds-select:not(.is-chosen) .ds-select__value {
+  white-space: normal;
+  text-overflow: clip;
+  line-height: 1.35;
+}
+
+.ds-select__chevron {
+  flex: none;
+  margin-left: 16px;
+  color: var(--ds-color-ink);
+  transition: transform var(--_ds-select-chevron-dur);
+}
+
+.ds-select.is-open .ds-select__chevron {
+  transform: rotate(180deg);
+}
+
+.ds-select__panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% - 1px);
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  background: var(--ds-color-paper) var(--ds-grain);
+  border: 1px solid var(--ds-color-rule-strong);
+  border-radius: 0;
+  box-shadow: var(--ds-shadow-panel);
+  color: var(--ds-color-ink);
+  font-size: var(--_ds-select-option-size);
+  letter-spacing: 0.01em;
+  line-height: 24px;
+  max-height: var(--_ds-select-panel-max);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.ds-select__panel[hidden] {
+  display: none;
+}
+
+.ds-select__option {
+  padding: 11px 16px;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.ds-select__option:hover,
+.ds-select__option:focus {
+  outline: 0;
+  background: color-mix(in srgb, var(--ds-color-ink) var(--_ds-select-hover), transparent);
+}
+
+.ds-select__option:focus-visible {
+  box-shadow: inset var(--_ds-select-focus-line) 0 0 var(--ds-color-ink);
+}
+
+.ds-select__option[aria-selected='true'] {
+  text-decoration: underline;
+  text-decoration-color: var(--ds-color-rule-strong);
+  text-underline-offset: 4px;
+}
+
+@media (max-width: 760px) {
+  .ds-field--line.ds-select {
+    --_ds-select-hint-size: 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-select__button,
+  .ds-select__chevron {
+    transition: none;
+  }
+}

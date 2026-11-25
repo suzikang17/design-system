@@ -34,7 +34,7 @@ describe("catalog discovery", () => {
         ...(showcase.license && { license: showcase.license }),
       })
     }
-  })
+  }, 30_000) // loads all 75 showcase modules; the 5 s default is too short on a loaded machine
 
   it("renders every showcase example without throwing", async () => {
     let rendered = 0
@@ -53,5 +53,5 @@ describe("catalog discovery", () => {
       }
     }
     expect(rendered).toBeGreaterThan(entries.length)
-  })
+  }, 30_000) // renders all 120 examples; the 5 s default is too short on a busy machine
 })

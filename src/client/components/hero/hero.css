@@ -1,0 +1,143 @@
+/* Hero: the opening section of a home page. split: the photo beside the words (stacked, photo first, in a narrow
+   slot). wordmark: a large centred title with the photo tucked up under it, a line above it and the text below.
+   It sizes to its own container (cqi), never to the window. */
+.ds-hero {
+  --_ds-hero-min: 420px;
+  --_ds-hero-gap: clamp(22px, 5cqi, 54px);
+  --_ds-hero-pad: clamp(28px, 6cqi, 72px);
+  --_ds-hero-copy-max: 520px;
+  --_ds-hero-text-max: 440px;
+  --_ds-hero-photo-w: min(30cqi, 400px); /* wordmark photo */
+  --_ds-hero-title: clamp(2.4rem, 11cqi, 8rem); /* wordmark title size, before the look's scale */
+  --_ds-hero-step: 0.1s; /* each part follows the one before */
+  --_ds-hero-dur: 0.8s;
+  --_ds-hero-fade: 22%; /* wordmark: where the photo's top fade ends */
+}
+
+.ds-hero {
+  box-sizing: border-box;
+  container-type: inline-size;
+  inline-size: 100%;
+  min-block-size: var(--_ds-hero-min);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: var(--ds-color-paper);
+  color: var(--ds-color-ink);
+  overflow-x: clip;
+}
+.ds-hero__title {
+  margin: 0;
+  font-family: var(--ds-font-heading);
+  font-weight: var(--ds-weight-heading);
+  line-height: var(--ds-leading-heading);
+  letter-spacing: var(--ds-track-heading);
+  text-transform: var(--ds-case-heading);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.ds-hero__text {
+  margin: 0;
+  font-family: var(--ds-font-paragraph);
+  font-size: var(--ds-text-lg);
+  line-height: 1.6;
+  color: var(--ds-color-ink-soft);
+  overflow-wrap: anywhere;
+}
+.ds-hero__media { min-inline-size: 0; }
+.ds-hero__media .ds-photo { inline-size: 100%; }
+
+/* the section is the container (its children are sized in cqi), so the padding and layout sit one level in */
+.ds-hero__box {
+  box-sizing: border-box;
+  inline-size: 100%;
+  padding: var(--_ds-hero-pad) var(--ds-gutter);
+}
+
+/* ---- split ---- */
+.ds-hero--split .ds-hero__box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  align-items: center;
+  gap: var(--_ds-hero-gap);
+  max-inline-size: 1180px;
+  margin-inline: auto;
+}
+.ds-hero__body { min-inline-size: 0; max-inline-size: var(--_ds-hero-copy-max); }
+.ds-hero--split .ds-hero__title {
+  margin: 12px 0 20px;
+  font-size: calc(clamp(2rem, 7cqi, 4.1rem) * var(--ds-scale-heading));
+}
+.ds-hero--split .ds-hero__text { max-inline-size: var(--_ds-hero-text-max); margin-block-end: 30px; }
+.ds-hero--split .ds-hero__media .ds-photo__well { border-radius: var(--ds-radius); overflow: hidden; }
+.ds-hero--no-image.ds-hero--split .ds-hero__box { grid-template-columns: minmax(0, 1fr); }
+@container (min-width: 640px) {
+  .ds-hero--split:not(.ds-hero--no-image) .ds-hero__box { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ---- wordmark ---- */
+.ds-hero--wordmark .ds-hero__box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  /* a script face's tall capitals reach above the line box: room for them */
+  padding-block: calc(var(--_ds-hero-pad) + var(--_ds-hero-title) * var(--ds-scale-heading) * 0.2) clamp(32px, 5cqi, 64px);
+}
+.ds-hero--wordmark .ds-hero__copy { position: relative; z-index: 2; display: grid; justify-items: center; gap: 0; max-inline-size: 100%; }
+.ds-hero--wordmark .ds-hero__title {
+  font-size: calc(var(--_ds-hero-title) * var(--ds-scale-heading));
+  line-height: 0.9;
+  text-align: center;
+}
+.ds-hero__line {
+  margin: clamp(14px, 2cqi, 22px) 0 0;
+  font-family: var(--ds-font-label);
+  font-size: var(--ds-text-sm);
+  letter-spacing: var(--ds-track-label);
+  text-transform: var(--ds-case-label);
+  color: var(--ds-color-ink-soft);
+  overflow-wrap: anywhere;
+}
+.ds-hero--wordmark .ds-hero__media {
+  position: relative;
+  z-index: 1;
+  inline-size: min(var(--_ds-hero-photo-w), 100%);
+  margin-block-start: clamp(10px, 2cqi, 22px);
+}
+@container (max-width: 640px) {
+  .ds-hero--wordmark .ds-hero__media { --_ds-hero-photo-w: 68cqi; }
+}
+.ds-hero--wordmark .ds-hero__media .ds-photo__well {
+  -webkit-mask: linear-gradient(to bottom, transparent 0, rgb(var(--ds-shade) / 0.45) 10%, rgb(var(--ds-shade)) var(--_ds-hero-fade));
+  mask: linear-gradient(to bottom, transparent 0, rgb(var(--ds-shade) / 0.45) 10%, rgb(var(--ds-shade)) var(--_ds-hero-fade));
+}
+.ds-hero--wordmark .ds-hero__rest { display: grid; justify-items: center; gap: 24px; margin-block-start: clamp(22px, 3cqi, 36px); max-inline-size: 100%; }
+.ds-hero--wordmark .ds-hero__text { max-inline-size: 36em; margin: 0; }
+
+/* ---- entrance: each part rises in, one after another, once the section is in view ---- */
+.ds-hero.is-armed .ds-hero__step {
+  opacity: 0;
+  translate: 0 var(--ds-rise);
+}
+.ds-hero.is-armed.is-in .ds-hero__step {
+  opacity: 1;
+  translate: none;
+  transition:
+    opacity var(--_ds-hero-dur) var(--ds-ease-out),
+    translate var(--_ds-hero-dur) var(--ds-ease-out);
+}
+.ds-hero.is-in .ds-hero__media { transition-delay: calc(var(--_ds-hero-step) * 1); }
+.ds-hero.is-in .ds-hero__title { transition-delay: calc(var(--_ds-hero-step) * 2); }
+.ds-hero.is-in .ds-hero__line,
+.ds-hero.is-in .ds-hero__text { transition-delay: calc(var(--_ds-hero-step) * 3); }
+.ds-hero.is-in .ds-hero__cta { transition-delay: calc(var(--_ds-hero-step) * 4); }
+@media (prefers-reduced-motion: reduce) {
+  .ds-hero.is-armed .ds-hero__step,
+  .ds-hero.is-armed.is-in .ds-hero__step {
+    opacity: 1;
+    translate: none;
+    transition: none;
+  }
+}

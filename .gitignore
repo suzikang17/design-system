@@ -9,3 +9,11 @@ registry.json
 *.log
 .claude/qa-runs/
 .playwright-cli/
+.superpowers/
+e2e/shots/
+e2e/fidelity/
+e2e/proof/
+test-results/
+playwright-report/
+.wrangler/
+e2e/ids.json

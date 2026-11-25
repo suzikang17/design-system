@@ -1,0 +1,37 @@
+/* Every theme plus the base rules: imported once by the catalog entry (main.tsx) and by the preview page. */
+@import "./themes/neutral.css";
+@import "./themes/urlovematters.css";
+@import "./themes/wecuratelife.css";
+@import "./base.css";
+
+/* Catalog only, not shipped (client-base does not list this file). Tailwind's preflight zeroes `p` margins; a bare
+   paragraph inside a piece (the Modal demo's body text) keeps the browser's own 1em block margins here. This is not
+   in base.css because base.css ships: in a consumer's Tailwind project it would override their own paragraphs.
+   :where() keeps it weaker than any class rule. */
+:where(.ds-root) p {
+  margin-block: 1em;
+}
+
+/* Catalog only: the numbered blocks the layout pieces (Container, Stack, Row, Columns, Grid) arrange in their
+   previews, and the room around a layout piece that has no gutters of its own. */
+.ds-demo-block {
+  display: grid;
+  place-items: center;
+  min-block-size: 72px;
+  padding: 14px 22px;
+  border: 1px dashed var(--ds-color-rule-strong);
+  border-radius: var(--ds-radius);
+  background: var(--ds-color-panel);
+  color: var(--ds-color-ink-soft);
+  font-family: var(--ds-font-label);
+  font-size: var(--ds-text-sm);
+}
+.ds-demo-block[data-tall] { min-block-size: 132px; }
+.ds-demo-pad {
+  inline-size: 100%;
+  padding: var(--ds-gutter);
+}
+/* on a home card the blocks are smaller, so a whole arrangement fits */
+[data-card-view] .ds-demo-block { min-block-size: 44px; padding: 8px 14px; }
+[data-card-view] .ds-demo-block[data-tall] { min-block-size: 76px; }
+[data-card-view] .ds-demo-pad { padding: 0; }

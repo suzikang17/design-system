@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { themes } from "@/themes"
 import { CopyButton } from "../CopyButton"
+import { installCommand } from "../installCommand"
 import { useTheme } from "../theme"
 
 const TOKENS = [
@@ -58,7 +59,7 @@ export function ThemeGallery() {
                   {inUse ? "In use on this site" : `Use ${theme.label}`}
                 </PillButton>
                 <CopyButton
-                  value={`pnpm dlx shadcn@latest add ${window.location.origin}/r/${theme.id}.json`}
+                  value={installCommand(theme.id)}
                   label={`Copy the install command for ${theme.label}`}
                 />
               </div>

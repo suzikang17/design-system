@@ -2,8 +2,9 @@ import type { HighlighterCore } from "shiki/core"
 
 let highlighter: Promise<HighlighterCore> | undefined
 
-/** TSX to HTML with light and dark colours as CSS variables. Shiki loads on first use. */
-export async function highlight(code: string, lang: "tsx" | "bash" = "tsx"): Promise<string> {
+/** TSX (or bash, or CSS) to HTML with light and dark colours as CSS variables. Shiki loads on first use; CSS
+ *  grammar only once a CSS file is shown. */
+export async function highlight(code: string, lang: "tsx" | "bash" | "css" = "tsx"): Promise<string> {
   highlighter ??= Promise.all([import("shiki/core"), import("shiki/engine/javascript")])
     .then(([{ createHighlighterCore }, { createJavaScriptRegexEngine }]) =>
       createHighlighterCore({
@@ -17,7 +18,9 @@ export async function highlight(code: string, lang: "tsx" | "bash" = "tsx"): Pro
       highlighter = undefined
       throw error
     })
-  return (await highlighter).codeToHtml(code, {
+  const ready = await highlighter
+  if (lang === "css" && !ready.getLoadedLanguages().includes("css")) await ready.loadLanguage(import("shiki/langs/css.mjs"))
+  return ready.codeToHtml(code, {
     lang,
     themes: { light: "github-light-default", dark: "github-dark-default" },
     defaultColor: false,

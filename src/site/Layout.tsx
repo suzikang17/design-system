@@ -13,7 +13,7 @@ export const SHOW_INSPIRATION = import.meta.env.VITE_SHOW_INSPIRATION === "true"
 
 const headerLink = ({ isActive }: { isActive: boolean }) =>
   cn(
-    "inline-flex h-10 items-center rounded-full px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:h-8",
+    "inline-flex h-10 items-center whitespace-nowrap rounded-full px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:h-8",
     isActive && "bg-muted text-foreground",
   )
 
@@ -35,11 +35,15 @@ export function Layout() {
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-1 px-4 sm:gap-2 md:px-6">
           <Link to="/" className="mr-auto flex items-center gap-2 rounded-full pr-2 text-[15px] font-semibold tracking-tight">
             <Mark />
-            {site.name}
+            {/* Below `sm` the mark alone fits beside the section links; the name stays the link's name. */}
+            <span className="sr-only whitespace-nowrap sm:not-sr-only">{site.name}</span>
           </Link>
           <nav aria-label="Site" className="flex items-center gap-1">
             <NavLink to="/components" className={headerLink}>
               Components
+            </NavLink>
+            <NavLink to="/client" className={headerLink}>
+              Client work
             </NavLink>
             {SHOW_INSPIRATION && (
               <NavLink to="/inspiration" className={headerLink}>
@@ -62,6 +66,9 @@ export function Layout() {
           <span className="font-medium text-foreground">{site.name}</span>
           <Link to="/components" className="hover:text-foreground">
             Components
+          </Link>
+          <Link to="/client" className="hover:text-foreground">
+            Client work
           </Link>
           <a href="/r/registry.json" className="hover:text-foreground">
             Registry index
@@ -138,7 +145,15 @@ function Mark() {
   )
 }
 
-export function CatalogLayout() {
+interface CatalogLayoutProps {
+  /** The side nav; the same nav opens in a sheet on small screens. */
+  nav?: ReactNode
+  /** The sheet's title and the button that opens it. */
+  title?: string
+  browseLabel?: string
+}
+
+export function CatalogLayout({ nav = <CatalogNav />, title = "Components", browseLabel = "Browse components" }: CatalogLayoutProps) {
   const { pathname } = useLocation()
   const [open, setOpen] = useState(false)
   const aside = useRef<HTMLElement>(null)
@@ -155,7 +170,7 @@ export function CatalogLayout() {
   return (
     <div className="mx-auto flex w-full max-w-7xl gap-10 px-4 md:px-6">
       <aside ref={aside} className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-52 shrink-0 overflow-y-auto py-8 pr-2 md:block">
-        <CatalogNav />
+        {nav}
       </aside>
       <div className="min-w-0 flex-1 pb-16 pt-6 md:pt-10">
         <div className="mb-6 md:hidden">
@@ -163,16 +178,14 @@ export function CatalogLayout() {
             <SheetTrigger asChild>
               <PillButton variant="outline" className="gap-2">
                 <PanelLeft aria-hidden="true" />
-                Browse components
+                {browseLabel}
               </PillButton>
             </SheetTrigger>
             <SheetContent side="left" aria-describedby={undefined} className="w-72 overflow-y-auto p-0">
               <SheetHeader className="border-b px-5 py-4 text-left">
-                <SheetTitle>Components</SheetTitle>
+                <SheetTitle>{title}</SheetTitle>
               </SheetHeader>
-              <div className="p-3">
-                <CatalogNav />
-              </div>
+              <div className="p-3">{nav}</div>
             </SheetContent>
           </Sheet>
         </div>

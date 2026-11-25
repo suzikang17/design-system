@@ -1,0 +1,42 @@
+/* Eyebrow: small tracked label, optionally with an accent rule that draws in. */
+.ds-eyebrow {
+  /* component-level (no contract token) */
+  --_ds-eyebrow-track: 0.22em;
+  --_ds-eyebrow-line-width: 38px;
+  --_ds-eyebrow-line-height: 2px;
+  --_ds-eyebrow-line-gap: 10px;
+  --_ds-eyebrow-line-dur: 0.6s;
+  --_ds-eyebrow-line-delay: 0.15s;
+
+  margin: 0;
+  font-family: var(--ds-font-label);
+  font-size: var(--ds-text-xs);
+  letter-spacing: var(--_ds-eyebrow-track);
+  text-transform: var(--ds-case-label);
+  color: var(--ds-color-ink-soft);
+}
+
+.ds-eyebrow--line::after {
+  content: '';
+  display: block;
+  width: 0;
+  height: var(--_ds-eyebrow-line-height);
+  margin-top: var(--_ds-eyebrow-line-gap);
+  background: var(--ds-color-accent);
+  transition: width var(--_ds-eyebrow-line-dur) var(--ds-ease-out) var(--_ds-eyebrow-line-delay);
+}
+
+span.ds-eyebrow {
+  display: inline-block;
+}
+
+.ds-eyebrow--line.is-in::after {
+  width: var(--_ds-eyebrow-line-width);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-eyebrow--line::after {
+    width: var(--_ds-eyebrow-line-width);
+    transition: none;
+  }
+}

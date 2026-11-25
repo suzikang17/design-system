@@ -55,9 +55,12 @@ export interface CatalogEntry {
 }
 
 /** The dependencies of `/r/<name>.json`, as the shadcn CLI will install them. */
-async function publishedDependencies(name: string): Promise<PublishedDependencies> {
+export async function publishedDependencies(name: string): Promise<PublishedDependencies> {
   const response = await fetch(`/r/${name}.json`)
   if (!response.ok) throw new Error(`/r/${name}.json answered ${response.status}`)
+  // The site's single-page fallback answers a missing file with index.html and a 200.
+  const type = response.headers.get("content-type") ?? ""
+  if (!type.includes("json")) throw new Error(`/r/${name}.json is not a registry item (${type || "no content type"})`)
   const item = (await response.json()) as { dependencies?: string[]; registryDependencies?: string[] }
   return {
     packages: (item.dependencies ?? []).map((dep) => {

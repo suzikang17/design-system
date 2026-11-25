@@ -1,0 +1,122 @@
+/* Field, Input, Textarea. Two variants: `line` (underline only, We Curate Life) and `box` (1px boxed,
+   ur love matters). Text and placeholder use the theme's field face (--ds-font-field; read with a
+   fallback to --ds-font-mono for themes copied out before that token existed). */
+.ds-field {
+  /* component-level lengths (no contract token); values measured on the live sites */
+  --_ds-field-pad: 12px 2px 9px;
+  --_ds-field-size: 14px;
+  --_ds-field-placeholder-size: 13px;
+  --_ds-field-track: normal;
+  --_ds-field-leading: 1.6;
+  --_ds-field-textarea-min: 171px;
+  --_ds-field-line: var(--ds-color-ink);
+  --_ds-field-focus: var(--ds-color-ink);
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  font-family: var(--ds-font-field, var(--ds-font-mono));
+  color: var(--ds-color-ink);
+}
+
+.ds-field--box {
+  --_ds-field-pad: 15px 18px;
+  --_ds-field-size: 16px;
+  --_ds-field-placeholder-size: 16px;
+  --_ds-field-track: 0.02em;
+  --_ds-field-textarea-min: 150px;
+  --_ds-field-leading: normal;
+  --_ds-field-line: var(--ds-color-field-border);
+}
+
+.ds-field--invalid {
+  --_ds-field-line: var(--ds-color-error);
+  --_ds-field-focus: var(--ds-color-error);
+}
+
+.ds-field__label {
+  font-size: var(--ds-text-sm);
+  letter-spacing: 0.02em;
+  color: var(--ds-color-ink);
+}
+
+.ds-input,
+.ds-textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--_ds-field-pad);
+  border: 0;
+  border-bottom: 1px solid var(--_ds-field-line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ds-color-ink);
+  font: inherit;
+  font-size: var(--_ds-field-size);
+  letter-spacing: var(--_ds-field-track);
+  line-height: var(--_ds-field-leading);
+  outline: none;
+  transition: border-color var(--ds-dur-fast) var(--ds-ease-out);
+}
+
+.ds-field--box .ds-input,
+.ds-field--box .ds-textarea {
+  border: 1px solid var(--_ds-field-line);
+}
+
+.ds-textarea {
+  min-height: var(--_ds-field-textarea-min);
+  line-height: 1.6;
+  resize: none;
+}
+
+/* the live We Curate Life textarea (line) shows no grip; the boxed one keeps vertical resize */
+.ds-field--box .ds-textarea {
+  resize: vertical;
+}
+
+.ds-input::placeholder,
+.ds-textarea::placeholder {
+  font-family: var(--ds-font-field, var(--ds-font-mono));
+  font-size: var(--_ds-field-placeholder-size);
+  letter-spacing: 0.02em;
+  color: var(--ds-color-placeholder);
+  opacity: 1;
+}
+
+/* focus changes only the border colour; the line variant thickens its underline by a hairline as live does */
+.ds-input:focus,
+.ds-textarea:focus {
+  border-color: var(--_ds-field-focus);
+}
+
+.ds-field--line .ds-input:focus,
+.ds-field--line .ds-textarea:focus {
+  box-shadow: 0 1px 0 var(--_ds-field-focus);
+}
+
+.ds-input:disabled,
+.ds-textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ds-field__hint,
+.ds-field__error {
+  margin: 0;
+  font-size: var(--ds-text-xs);
+  letter-spacing: 0.02em;
+  color: var(--ds-color-ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.ds-field--box.ds-field--invalid .ds-field__error {
+  color: var(--ds-color-error);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-input,
+  .ds-textarea {
+    transition: none;
+  }
+}

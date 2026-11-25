@@ -1,0 +1,68 @@
+:root,
+[data-theme="neutral"] {
+  --ds-color-paper: #ffffff;
+  --ds-color-panel: #f4f4f5;
+  --ds-color-panel-alt: #ececee;
+  --ds-color-ink: #111111;
+  --ds-color-ink-soft: #5f6368;
+  --ds-color-rule: rgba(17, 17, 17, 0.12);
+  --ds-color-rule-strong: rgba(17, 17, 17, 0.24);
+  --ds-color-accent: #7f8590;
+  --ds-color-accent-soft: #e5e7eb;
+  --ds-color-on-photo: #ffffff;
+  --ds-color-on-ink: #ffffff;
+  --ds-shade: 17 17 17;
+  --ds-color-field-border: rgba(17, 17, 17, 0.46);
+  --ds-color-placeholder: #6e7175;
+  --ds-color-error: #b3261e;
+  --ds-button-text: 13px;
+  --ds-button-track: 0em;
+  --ds-button-pad: 15px 30px;
+  --ds-button-pad-outline: 15px 40px;
+  --ds-button-fill-border: 1px;
+
+  --ds-font-heading: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --ds-font-heading-alt: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --ds-font-title: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --ds-font-label: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --ds-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --ds-font-field: var(--ds-font-paragraph);
+  --ds-font-paragraph: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --ds-font-accent: inherit;
+  --ds-weight-heading: 600;
+  --ds-leading-heading: 1.15;
+
+  --ds-case-heading: none;
+  --ds-case-title: none;
+  --ds-case-label: none;
+  --ds-track-heading: 0em;
+  --ds-track-title: 0em;
+  --ds-track-label: 0em;
+  --ds-scale-heading: 1;
+  --ds-scale-title: 1;
+
+  --ds-text-xs: 11px;
+  --ds-text-sm: 13px;
+  --ds-text-base: 15px;
+  --ds-text-lg: 18px;
+  --ds-text-xl: 24px;
+  --ds-text-quote: clamp(22px, 2.4vw, 34px);
+
+  --ds-gutter: clamp(20px, 4vw, 60px);
+  --ds-space-stack: clamp(64px, 9vw, 128px);
+  --ds-space-section: clamp(72px, 10vw, 112px);
+
+  --ds-ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ds-ease-spring: cubic-bezier(0.34, 1.3, 0.5, 1);
+  --ds-dur-fast: 0.2s;
+  --ds-dur-reveal: 0.6s;
+  --ds-rise: 8px;
+
+  --ds-radius: 6px;
+  --ds-radius-button: 6px;
+
+  --ds-shadow-print: drop-shadow(0 6px 12px rgb(var(--ds-shade) / 0.12));
+  --ds-shadow-panel: 0 12px 24px -12px rgb(var(--ds-shade) / 0.25);
+  --ds-grain: none;
+  --ds-color-plate: #f5f5f3;
+}

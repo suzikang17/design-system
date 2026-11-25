@@ -10,12 +10,23 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "lint": "eslint .",
     "test": "vitest run",
+    "e2e": "tsx scripts/gen-e2e-inputs.ts && playwright test",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm e2e",
     "gen:registry": "tsx scripts/gen-registry.ts",
     "build:registry": "shadcn build registry.json --output public/r",
     "registry": "pnpm gen:registry && pnpm build:registry",
+    "deploy:preview": "node scripts/require-site-url.mjs && pnpm build && wrangler deploy",
     "new": "tsx scripts/new-component.ts"
   },
   "dependencies": {
+    "@fontsource/cormorant": "^5.3.0",
+    "@fontsource/courier-prime": "^5.3.0",
+    "@fontsource/eb-garamond": "^5.3.0",
+    "@fontsource/inter-tight": "^5.3.0",
+    "@fontsource/pacifico": "^5.3.0",
+    "@fontsource/poppins": "^5.3.0",
+    "@fontsource/sen": "^5.3.0",
+    "@fontsource/tangerine": "^5.3.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
     "@radix-ui/react-aspect-ratio": "^1.1.0",
@@ -66,6 +77,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
+    "@playwright/test": "1.65.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -86,7 +98,8 @@
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.0.1",
     "vite": "^7.3.1",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "wrangler": "^4.166.0"
   },
   "packageManager": "pnpm@11.21.0"
 }

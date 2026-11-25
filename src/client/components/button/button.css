@@ -1,0 +1,171 @@
+/* Button. Tokens for colour, type size, tracking and padding (they differ per theme). */
+.ds-button {
+  /* component-level lengths (no contract token) */
+  --_ds-button-border: 1px;
+  --_ds-button-lift: -2px;
+  /* sheen sweep duration: no contract token fits (slower than --ds-dur-fast) */
+  --_ds-button-sheen-dur: 0.6s;
+
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: inline-block;
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: var(--ds-button-pad);
+  border: var(--_ds-button-border) solid transparent;
+  border-radius: var(--ds-radius-button);
+  font-family: var(--ds-font-label);
+  font-size: var(--ds-button-text);
+  font-style: normal;
+  letter-spacing: var(--ds-button-track);
+  text-transform: var(--ds-case-label);
+  text-align: center;
+  text-decoration: none;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition:
+    transform var(--ds-dur-fast) var(--ds-ease-out),
+    opacity var(--ds-dur-fast) var(--ds-ease-out),
+    background-color var(--ds-dur-fast) var(--ds-ease-out),
+    color var(--ds-dur-fast) var(--ds-ease-out),
+    border-color var(--ds-dur-fast) var(--ds-ease-out);
+}
+
+.ds-button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+.ds-button:disabled,
+.ds-button[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ---- variants ---- */
+.ds-button--primary,
+.ds-button--secondary {
+  /* filled variants: bordered on We Curate Life, borderless on ur love matters (theme token) */
+  border-width: var(--ds-button-fill-border, var(--_ds-button-border));
+}
+
+.ds-button--primary {
+  background-color: var(--ds-color-ink);
+  border-color: var(--ds-color-ink);
+  color: var(--ds-color-on-ink);
+}
+
+.ds-button--secondary {
+  background-color: var(--ds-color-accent-soft);
+  color: var(--ds-color-ink);
+}
+
+.ds-button--outline,
+.ds-button--on-photo {
+  padding: var(--ds-button-pad-outline);
+  background-color: transparent;
+}
+
+.ds-button--outline {
+  color: var(--ds-color-ink);
+  border-color: var(--ds-color-ink);
+}
+
+.ds-button--on-photo {
+  color: var(--ds-color-on-photo);
+  border-color: var(--ds-color-on-photo);
+}
+
+@media (hover: hover) {
+  .ds-button:hover {
+    transform: translateY(var(--_ds-button-lift));
+  }
+  .ds-button:hover:active {
+    transform: translateY(0);
+  }
+  .ds-button--primary:hover {
+    opacity: 0.82;
+  }
+  .ds-button--secondary:hover {
+    background-color: var(--ds-color-accent);
+  }
+  .ds-button--outline:hover {
+    background-color: var(--ds-color-ink);
+    color: var(--ds-color-paper);
+  }
+  .ds-button--on-photo:hover {
+    background-color: var(--ds-color-on-photo);
+    color: var(--ds-color-ink);
+    border-color: var(--ds-color-on-photo);
+  }
+}
+
+/* ---- hover effects ---- */
+.ds-button--sheen::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -120%;
+  z-index: 1;
+  width: 55%;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    color-mix(in srgb, var(--ds-color-on-ink) 38%, transparent),
+    transparent
+  );
+  transform: skewX(-18deg);
+  transition: left var(--_ds-button-sheen-dur) var(--ds-ease-out);
+}
+
+.ds-button--wipe::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--ds-color-accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--ds-dur-fast) var(--ds-ease-out);
+}
+
+@media (hover: hover) {
+  .ds-button--sheen:hover::after {
+    left: 150%;
+  }
+  .ds-button--wipe:hover::before {
+    transform: scaleX(1);
+  }
+  .ds-button--wipe:hover {
+    color: var(--ds-color-ink);
+    opacity: 1;
+  }
+}
+
+.ds-button:active {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-button {
+    transition: none;
+  }
+  .ds-button:hover,
+  .ds-button:hover:active {
+    transform: none;
+  }
+  .ds-button--sheen::after,
+  .ds-button--wipe::before {
+    transition: none;
+    display: none;
+  }
+  /* wipe shows its final state directly */
+  .ds-button--wipe:hover {
+    background-color: var(--ds-color-accent);
+  }
+}

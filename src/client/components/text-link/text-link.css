@@ -1,0 +1,75 @@
+/* TextLink. Underline is a bottom rule; arrow and grow rule are transform/width only. */
+.ds-textlink {
+  /* component-level lengths and durations (no contract token) */
+  --_ds-textlink-arrow-gap: 8px;
+  --_ds-textlink-arrow-shift: 6px;
+  --_ds-textlink-grow-dur: 0.3s;
+
+  position: relative;
+  display: inline-block;
+  padding-bottom: 2px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ds-color-ink) 35%, transparent);
+  color: inherit;
+  font-family: var(--ds-font-paragraph);
+  font-size: var(--ds-text-sm);
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color var(--ds-dur-fast) var(--ds-ease-out);
+}
+
+.ds-textlink:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+.ds-textlink__arrow {
+  display: inline-block;
+  margin-left: var(--_ds-textlink-arrow-gap);
+  transition: transform var(--ds-dur-fast) var(--ds-ease-out);
+}
+
+.ds-textlink--grow {
+  border-bottom-color: transparent;
+}
+
+.ds-textlink--grow::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  height: 1px;
+  background: currentColor;
+  transition: width var(--_ds-textlink-grow-dur) var(--ds-ease-out);
+}
+
+@media (hover: hover) {
+  .ds-textlink:hover {
+    border-color: var(--ds-color-ink);
+  }
+  .ds-textlink:hover .ds-textlink__arrow {
+    transform: translateX(var(--_ds-textlink-arrow-shift));
+  }
+  .ds-textlink--grow:hover {
+    border-bottom-color: transparent;
+  }
+  .ds-textlink--grow:hover::after {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-textlink,
+  .ds-textlink__arrow,
+  .ds-textlink--grow::after {
+    transition: none;
+  }
+  .ds-textlink:hover .ds-textlink__arrow {
+    transform: none;
+  }
+  /* grow rule shows its final state on hover instead of animating */
+  .ds-textlink--grow:hover::after {
+    width: 100%;
+  }
+}
