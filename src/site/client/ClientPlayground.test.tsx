@@ -144,9 +144,11 @@ describe("the playground", () => {
   it("a font picked from the set reaches the page and the address, a link brings it back, and Start over drops it", async () => {
     renderPlayground(`/client/playground?page=${encodeItems(page(["chips"]))}&font=garamond`)
     const post = vi.spyOn(frame().contentWindow!, "postMessage")
-    const fonts = screen.getByRole("combobox", { name: "Fonts" }) as HTMLSelectElement
-    expect(fonts.value).toBe("garamond")
-    await userEvent.selectOptions(fonts, "Poppins")
+    const fonts = screen.getByRole("combobox", { name: "Fonts" })
+    expect(fonts).toHaveTextContent("EB Garamond + Sen")
+    expect(fonts.tagName).toBe("BUTTON")
+    await userEvent.click(fonts)
+    await userEvent.click(await screen.findByRole("option", { name: "Poppins" }))
     expect(told(post).font).toBe("poppins")
     await waitFor(() => expect(where()).toContain("font=poppins"))
     await userEvent.click(screen.getByRole("button", { name: "Start over" }))

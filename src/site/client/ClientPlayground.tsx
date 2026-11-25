@@ -5,6 +5,7 @@ import { Check, Link2, Plus, RotateCcw, Trash2 } from "lucide-react"
 import { GROUPS } from "@/client/catalog/registry"
 import { THEMES } from "@/client/tokens/contract"
 import { PillButton } from "@/components/ui/pill"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { useTitle } from "../useTitle"
 import { useClientChoice } from "./clientChoice"
@@ -44,6 +45,8 @@ import {
 /** Quiet time after the last change before the address is written (see ClientPiece). */
 const ADDRESS_DELAY = 300
 const FRAME_TITLE = "Your page"
+/** The Fonts dropdown's value for "no pick": the styled Select cannot hold an empty one. */
+const OWN_FONTS = "own"
 
 /**
  * A page to arrange: pieces are dragged from the tray onto a page drawn inside a monitor, tablet or phone, moved
@@ -188,19 +191,20 @@ export default function ClientPlayground() {
             <h2 id="fonts" className="mb-2 text-xs font-semibold text-foreground">
               Fonts
             </h2>
-            <select
-              aria-labelledby="fonts"
-              value={font ?? ""}
-              onChange={(event) => setFont(fontSet(event.target.value)?.id ?? null)}
-              className="h-9 w-full rounded-lg border bg-card px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="">The {lookLabel} look’s own</option>
-              {FONT_SETS.map((set) => (
-                <option key={set.id} value={set.id}>
-                  {set.label}
-                </option>
-              ))}
-            </select>
+            <Select value={font ?? OWN_FONTS} onValueChange={(next) => setFont(fontSet(next)?.id ?? null)}>
+              <SelectTrigger aria-labelledby="fonts" className="h-10 w-full md:h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={OWN_FONTS}>The look’s own</SelectItem>
+                {FONT_SETS.map((set) => (
+                  // Each set is named in its own heading font: the fonts are already loaded by the looks.
+                  <SelectItem key={set.id} value={set.id}>
+                    <span style={{ fontFamily: set.heading }}>{set.label}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </section>
 
           <section aria-labelledby="structures" className="min-w-0">
