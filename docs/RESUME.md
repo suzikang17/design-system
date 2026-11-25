@@ -1,8 +1,9 @@
 # Resume
 
-**State (2026-11-23):** `feat/client-work` is pushed and open as PR #2 (not merged). It holds the Client work section:
+**State (2026-11-25):** `feat/client-work` is pushed and open as PR #2 (not merged). It holds the Client work section:
 22 pieces in `src/client/` (five are layout pieces: Container, Stack, Row, Columns, Grid), the `/client` pages with a
-client dropdown, device frames and `/client/playground`, where pieces are dragged onto a page and into layout pieces.
+client dropdown, device frames and `/client/playground`, where a visitor picks a structure, adds pieces into
+it and picks the fonts (tray on the right).
 A preview is deployed at the Worker's `workers.dev` address; no custom domain. `docs/CONVENTIONS.md` has the rules.
 
 **Next steps:**

@@ -51,7 +51,7 @@ path: `[index]` on the page, `[index, slot, index]` inside a layout piece. Layou
 holds 24 pieces in all, whatever a link says. The tray offers layout pieces as
 structures (`STRUCTURES`: a layout piece with its options set, drawn as a wireframe) and everything else as pieces.
 Every slot has an "Add a piece" button that selects the slot; a piece tapped in the tray goes into the selected
-slot (`addPath`). The starter page is a nav bar, one empty two-column structure and a footer. A new layout piece is droppable in the playground without further
+slot (`addPath`). The starter page is a nav bar, one empty two-column structure and a footer. The page can be set in a picked pair of fonts (`FONT_SETS` in `playground/fonts.ts`, `font=<id>` in the link): the pick overrides the look's font tokens on the page's root, and a set may only name fonts a look already loads. A new layout piece is droppable in the playground without further
 work; a layout piece with more than one slot needs a case in `slotCount` and in the page's `renderItem`.
 
 ## Layout of `src/client/`

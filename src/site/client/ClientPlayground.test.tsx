@@ -141,6 +141,18 @@ describe("the playground", () => {
     expect(told(post).items).toEqual(starterPage())
   })
 
+  it("a font picked from the set reaches the page and the address, a link brings it back, and Start over drops it", async () => {
+    renderPlayground(`/client/playground?page=${encodeItems(page(["chips"]))}&font=garamond`)
+    const post = vi.spyOn(frame().contentWindow!, "postMessage")
+    const fonts = screen.getByRole("combobox", { name: "Fonts" }) as HTMLSelectElement
+    expect(fonts.value).toBe("garamond")
+    await userEvent.selectOptions(fonts, "Poppins")
+    expect(told(post).font).toBe("poppins")
+    await waitFor(() => expect(where()).toContain("font=poppins"))
+    await userEvent.click(screen.getByRole("button", { name: "Start over" }))
+    expect(told(post).font).toBeNull()
+  })
+
   it("Copy link copies this page's address with the look and the arrangement", async () => {
     const writeText = vi.fn(async (text: string) => void text)
     vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } })
@@ -292,6 +304,17 @@ describe("the page inside the playground's frame", () => {
       await userEvent.click(screen.getByRole("button", { name: "Remove Stack" }))
       expect(screen.getByText("Pick a structure to start your page.")).toBeInTheDocument()
     })
+  })
+
+  it("sets the page in the picked fonts, over those of the look", () => {
+    render(
+      <MemoryRouter initialEntries={[`/client/preview/playground?${encodePage({ look: "urlovematters", items: page(["button"]), selected: null, font: "poppins" })}`]}>
+        <ClientPlaygroundPage />
+      </MemoryRouter>,
+    )
+    const root = document.querySelector<HTMLElement>(".ds-root[data-theme]")!
+    expect(root.style.getPropertyValue("--ds-font-heading")).toContain("Poppins")
+    expect(root.style.getPropertyValue("--ds-font-mono")).toBe("")
   })
 
   it("ignores a drag that is not a piece", () => {

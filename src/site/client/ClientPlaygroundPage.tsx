@@ -8,6 +8,7 @@ import { Container } from "@/client/components/container/Container"
 import { cn } from "@/lib/utils"
 import type { PreviewMessage } from "./parts/PreviewFrame"
 import { PreviewFit } from "./parts/PreviewFit"
+import { fontStyle } from "./playground/fonts"
 import {
   DEFAULT_LOOK,
   DRAG_TYPE,
@@ -35,7 +36,7 @@ function isPreviewMessage(data: unknown): data is PreviewMessage {
 
 const read = (search: string): PageState => {
   const page = decodePage(search)
-  return { look: page.look ?? DEFAULT_LOOK, items: page.items ?? [], selected: page.selected }
+  return { look: page.look ?? DEFAULT_LOOK, items: page.items ?? [], selected: page.selected, font: page.font }
 }
 
 const keyOf = (path: Path) => path.join(".")
@@ -309,6 +310,7 @@ export default function ClientPlaygroundPage() {
       ref={root}
       className="ds-root min-h-screen"
       data-theme={state.look}
+      style={fontStyle(state.font)}
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragLeave={(event) => {

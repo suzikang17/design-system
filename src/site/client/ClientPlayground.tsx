@@ -11,6 +11,7 @@ import { useClientChoice } from "./clientChoice"
 import { Controls } from "./parts/Controls"
 import { PreviewFrame } from "./parts/PreviewFrame"
 import { SizeSwitch, type PreviewSize } from "./parts/SizeSwitch"
+import { FONT_SETS, fontSet } from "./playground/fonts"
 import {
   DEFAULT_LOOK,
   DRAG_TYPE,
@@ -58,10 +59,11 @@ export default function ClientPlayground() {
 
   // A link that carries a page opens it; otherwise the visitor starts from a whole small site.
   const [items, setItems] = useState<PageItem[]>(() => decodePage(location.search).items ?? starterPage(look))
+  const [font, setFont] = useState<string | null>(() => decodePage(location.search).font)
   const [selected, setSelected] = useState<Path | null>(null)
   const [size, setSize] = useState<PreviewSize>("desktop")
   const [copied, setCopied] = useState(false)
-  const search = encodePage({ look, items, selected })
+  const search = encodePage({ look, items, selected, font })
 
   // An untouched starter page follows the picked client: each site lays its sections out its own way.
   const lastLook = useRef(look)
@@ -88,7 +90,7 @@ export default function ClientPlayground() {
   }, [])
 
   // The address mirrors the page and the look, written once things have been quiet for a moment.
-  const share = `look=${look}&page=${encodeItems(items)}`
+  const share = `look=${look}&page=${encodeItems(items)}${font ? `&font=${font}` : ""}`
   const here = useRef({ pathname: location.pathname, search: location.search, navigate })
   here.current = { pathname: location.pathname, search: location.search, navigate }
   useEffect(() => {
@@ -150,6 +152,7 @@ export default function ClientPlayground() {
             onClick={() => {
               setItems(starterPage(look))
               setSelected(null)
+              setFont(null)
             }}
           >
             <RotateCcw aria-hidden="true" />
@@ -178,8 +181,28 @@ export default function ClientPlayground() {
         {choice === "all" && <> Shown in the {lookLabel} look: pick a client on the left to change it.</>}
       </p>
 
-      <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[12rem_minmax(0,1fr)]">
-        <div className="min-w-0 space-y-5 lg:max-h-[50rem] lg:overflow-y-auto lg:pr-1">
+      <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_13rem]">
+        {/* First in the source, so a narrow screen has it above the page; on a wide one it is the right sidebar. */}
+        <div className="min-w-0 space-y-5 lg:order-2 lg:max-h-[50rem] lg:overflow-y-auto lg:pl-1">
+          <section aria-labelledby="fonts" className="min-w-0">
+            <h2 id="fonts" className="mb-2 text-xs font-semibold text-foreground">
+              Fonts
+            </h2>
+            <select
+              aria-labelledby="fonts"
+              value={font ?? ""}
+              onChange={(event) => setFont(fontSet(event.target.value)?.id ?? null)}
+              className="h-9 w-full rounded-lg border bg-card px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">The {lookLabel} look’s own</option>
+              {FONT_SETS.map((set) => (
+                <option key={set.id} value={set.id}>
+                  {set.label}
+                </option>
+              ))}
+            </select>
+          </section>
+
           <section aria-labelledby="structures" className="min-w-0">
             <h2 id="structures" className="mb-2 text-xs font-semibold text-foreground">
               1. Structure

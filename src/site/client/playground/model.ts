@@ -3,6 +3,7 @@ import { allMeta, getMeta } from "@/client/catalog/registry"
 import { splitShares } from "@/client/components/columns/splitShares"
 import { decodeState, encodeState } from "@/client/catalog/state"
 import { isThemeId, type ThemeId } from "@/client/tokens/contract"
+import { fontSet } from "./fonts"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- a meta of any piece, as in the registry
 type AnyMeta = ComponentMeta<any>
@@ -15,7 +16,8 @@ export type PageItem = { id: string; p?: string; c?: PageItem[][] }
 /** Where an item is: its index on the page, or index, slot, index for an item inside a layout piece, and so on. */
 export type Path = readonly number[]
 
-export type PageState = { look: ThemeId; items: PageItem[]; selected: Path | null }
+/** `font` is the id of a picked font set (see fonts.ts); null keeps the fonts of the look. */
+export type PageState = { look: ThemeId; items: PageItem[]; selected: Path | null; font?: string | null }
 
 /** A page holds at most this many pieces, whatever a link says. */
 export const MAX_ITEMS = 24
@@ -146,18 +148,19 @@ export function decodeItems(raw: string | null): PageItem[] {
 /** The search the page inside the frame is given: the look, the pieces, and which one is selected. */
 export function encodePage(state: PageState): string {
   const params = new URLSearchParams({ look: state.look, page: encodeItems(state.items) })
+  if (state.font) params.set("font", state.font)
   if (state.selected !== null) params.set("sel", state.selected.join("."))
   return params.toString()
 }
 
 /** Never throws. `page` absent means "no page given" (null items), which the playground answers with the starter. */
-export function decodePage(search: string): { look: ThemeId | null; items: PageItem[] | null; selected: Path | null } {
+export function decodePage(search: string): { look: ThemeId | null; items: PageItem[] | null; selected: Path | null; font: string | null } {
   const params = new URLSearchParams(search)
   const look = params.get("look")
   const items = params.has("page") ? decodeItems(params.get("page")) : null
   const sel = (params.get("sel") ?? "").split(".").map((part) => (/^\d+$/.test(part) ? Number(part) : Number.NaN))
   const selected = items ? validSelection(items, sel) : null
-  return { look: isThemeId(look) ? look : null, items, selected }
+  return { look: isThemeId(look) ? look : null, items, selected, font: fontSet(params.get("font"))?.id ?? null }
 }
 
 export const metaOf = (item: PageItem): AnyMeta | undefined => getMeta(item.id)

@@ -13,7 +13,7 @@ describe("the playground's page model", () => {
     const edited = withProps(a, { ...button.defaults, variant: "outline" })
     expect(edited.p).toBeTruthy()
     const search = encodePage({ look: "urlovematters", items: [edited, b], selected: [1] })
-    expect(decodePage(search)).toEqual({ look: "urlovematters", items: [edited, b], selected: [1] })
+    expect(decodePage(search)).toEqual({ look: "urlovematters", items: [edited, b], selected: [1], font: null })
     expect(itemProps(edited).variant).toBe("outline")
     expect(itemProps(a)).toEqual(button.defaults)
   })
@@ -29,7 +29,7 @@ describe("the playground's page model", () => {
 
   it("never throws, and keeps only what is usable from a link", () => {
     for (const raw of ["%%%", "e30", "W10", "bm9wZQ", "x".repeat(70000)]) expect(decodeItems(raw)).toEqual([])
-    expect(decodePage("look=bogus&page=%%%&sel=7")).toEqual({ look: null, items: [], selected: null })
+    expect(decodePage("look=bogus&page=%%%&sel=7&font=comic")).toEqual({ look: null, items: [], selected: null, font: null })
     expect(cleanItems([["button"], ["nope"], [42], "button", null, ["chips", 5], { id: "photo", p: "abc" }, ["button", "y".repeat(20001)]])).toEqual([
       { id: "button" },
       { id: "chips" },
@@ -131,7 +131,7 @@ describe("the playground's page model", () => {
     it("a nested page round-trips through the address, selection included", () => {
       const page = [a, withProps(cols([row(a, b)], [c]), { ...columns.defaults, split: "2/1" })]
       const search = encodePage({ look: "neutral", items: page, selected: [1, 0, 0, 0, 1] })
-      expect(decodePage(search)).toEqual({ look: "neutral", items: page, selected: [1, 0, 0, 0, 1] })
+      expect(decodePage(search)).toEqual({ look: "neutral", items: page, selected: [1, 0, 0, 0, 1], font: null })
       expect(decodePage(`page=${encodeItems(page)}&sel=1.0.0.0.9`).selected).toBeNull()
       // a slot can be selected too (to add into); one that is not there cannot
       expect(decodePage(`page=${encodeItems(page)}&sel=1.0`).selected).toEqual([1, 0])
